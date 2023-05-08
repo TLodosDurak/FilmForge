@@ -3,6 +3,7 @@ from moviepy.editor import (concatenate_videoclips, TextClip, CompositeVideoClip
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain.llms import OpenAI
+from langchain.utilities.wikipedia import WikipediaAPIWrapper
 import os
 import json
 from dotenv import load_dotenv
@@ -73,25 +74,29 @@ def main():
                                           'mp4', 'avi', 'mov'], accept_multiple_files=True)
     uploaded_bg_music = st.file_uploader(
         "Choose a background music file", type=['mp3', 'wav'])
-    
+
     generate_video_button = st.button("Generate Video")
 
     if not is_generating_video and user_input and generate_video_button:
         is_generating_video = True
+        wiki = WikipediaAPIWrapper()
+        wiki_prompt = 'Top 10 Country' + user_input  # More detailed prompt for wiki
+        wiki_summary = wiki.run(wiki_prompt)
         video_template = PromptTemplate(
-            input_variables=["topic"],
-            template='Based on the topic "{topic}", generate a list of 10 countries ranked from last place to first place.\
+            input_variables=["topic", "wiki_summary"],
+            template='Based on the topic "{topic}" and its Wikipedia summary "{wiki_summary}", generate a list of 10 countries ranked from last place to first place.\
                     Your response should be in an array format, like this:\
                     ["Country 10th place", "Country 9th place", "Country 8th place", "Country 7th place",\
-                    "Country 6th place", "Country 5th place", "Country 4th place", "Country 3rd place", "Country 2nd place", "Country 1st place"].'
+                    "Country 6th place", "Country 5th place", "Country 4th place", "Country 3rd place", "Country 2nd place", "Country 1st place"]. Reflect on your answer.'
         )
 
         llm = OpenAI(temperature=0.8)
-        video_chain = LLMChain(llm=llm, prompt=video_template)
+        video_chain = LLMChain(llm=llm, prompt=video_template, verbose=True)
 
-        response = video_chain.run(user_input)
-        #For testing the code without making openai calls $$$
-        #response = '["North Korea", "France", "China", "United Kingdom", "India", "Pakistan", "Israel", "Russia", "United States", "Iran"]'
+        response = video_chain.run(
+            {"topic": user_input, "wiki_summary": wiki_summary})
+        # For testing the code without making openai calls $$$
+        # response = '["North Korea", "France", "China", "United Kingdom", "India", "Pakistan", "Israel", "Russia", "United States", "Iran"]'
         st.write(response)
         import tempfile
 
@@ -110,7 +115,8 @@ def main():
 
         with st.spinner("Generating video...\n this might take a minute!"):
             # This line creates the video using the ranking list.
-            create_video(convert_openai_response(response), bg_videos, bg_music)    
+            create_video(convert_openai_response(
+                response), bg_videos, bg_music)
 
         is_generating_video = False
 
