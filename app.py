@@ -5,7 +5,7 @@ from moviepy.editor import (concatenate_videoclips, TextClip, CompositeVideoClip
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain.llms import OpenAI
-from langchain.utilities.wikipedia import WikipediaAPIWrapper
+# from langchain.utilities.wikipedia import WikipediaAPIWrapper  Removed due to increased inaccuracies
 from custom_google_search import CustomGoogleSearchAPIWrapper
 import os
 import json
@@ -39,9 +39,27 @@ def delete_media_files(num_files: int) -> None:
             os.remove(file_path)
 
 
+def create_title_card(title_text, duration=4, bg_video=None):
+    title_clip = TextClip(title_text, fontsize=45, font="Arial-Bold",
+                          color='YellowGreen', size=(540, 960), stroke_color='black', stroke_width=2)
+    title_clip = title_clip.set_duration(duration)
+
+    if bg_video is not None:
+        bg_video = bg_video.resize(height=960, width=540)
+        bg_video = bg_video.set_duration(duration)
+        title_card = CompositeVideoClip([bg_video, title_clip])
+    else:
+        title_card = title_clip
+
+    return title_card
+
+
 def create_ranking_frame(rank, text, duration=2, bg_video=None, media_file_path=None):
-    txt_clip = TextClip(f"Rank {rank}: {text}", fontsize=24,
-                        color='white', size=(540, 960))  # Updated size for 9:16 aspect ratio
+    canvas_clip = TextClip(f"Canvas", fontsize=45, font="Arial-Bold",
+                        color='YellowGreen', size=(540, 960), stroke_color='black', stroke_width=2)
+    txt_clip = TextClip(f"Rank {rank}: {text}", fontsize=45, font="Arial-Bold",
+                        color='YellowGreen', size=(540, 960), stroke_color='black', stroke_width=2)
+    canvas_clip = txt_clip.set_duration(duration)
     txt_clip = txt_clip.set_duration(duration)
 
     if bg_video is not None:
@@ -54,12 +72,17 @@ def create_ranking_frame(rank, text, duration=2, bg_video=None, media_file_path=
         # Resize the media clip as needed
         media_clip = media_clip.resize(height=300)
         # Position the media clip on the frame
-        media_clip = media_clip.set_position(("right", "bottom"))
-        clip = CompositeVideoClip([bg_video, txt_clip, media_clip]
-                                  ) if bg_video else CompositeVideoClip([txt_clip, media_clip])
+        media_clip = media_clip.set_position(("center"))
+
+        if bg_video is not None:
+            clip = CompositeVideoClip([canvas_clip, bg_video, media_clip, txt_clip])
+        else:
+            clip = CompositeVideoClip([canvas_clip, media_clip, txt_clip])
     else:
-        clip = bg_video.set_duration(duration).set_opacity(
-            1) if bg_video else txt_clip
+        if bg_video is not None:
+            clip = CompositeVideoClip([canvas_clip, bg_video, txt_clip])
+        else:
+            clip = txt_clip
 
     return clip
 
@@ -67,6 +90,13 @@ def create_ranking_frame(rank, text, duration=2, bg_video=None, media_file_path=
 def create_video(ranking_list, user_input, bg_videos=None, bg_music=None):
     clips = []
     j = 0
+    # Title card
+    title_text = f"Top 10 {user_input}"
+    if bg_videos is not None:
+        bg_video = bg_videos[j % len(bg_videos)] if bg_videos else None
+    else:
+        bg_video = None
+    clips.append(create_title_card(title_text, bg_video=bg_video))
 
     google_search = CustomGoogleSearchAPIWrapper()
 
@@ -94,10 +124,10 @@ def create_video(ranking_list, user_input, bg_videos=None, bg_music=None):
         audio = audio.volumex(0.6)  # Set audio volume
         audio = audio.set_duration(final_video.duration)
         final_video = final_video.set_audio(audio)
-        final_video.write_videofile("ranking_video.mp4", fps=24)
+        final_video.write_videofile("ranking_video.mp4", fps=24, codec='libx264')
         audio.close()  # Close the AudioFileClip before deleting the temporary file
     else:
-        final_video.write_videofile("ranking_video.mp4", fps=24)
+        final_video.write_videofile("ranking_video.mp4", fps=24, codec='libx264')
 
     delete_media_files(len(ranking_list))
 
@@ -129,25 +159,25 @@ def main():
 
     if not is_generating_video and user_input and generate_video_button:
         is_generating_video = True
-        wiki = WikipediaAPIWrapper()
-        wiki_prompt = 'Top 10 Country' + user_input  # More detailed prompt for wiki
-        wiki_summary = wiki.run(wiki_prompt)
+        # wiki = WikipediaAPIWrapper()
+        # wiki_prompt = 'Top 10 Country' + user_input  # More detailed prompt for wiki
+        # wiki_summary = wiki.run(wiki_prompt)
         video_template = PromptTemplate(
-            input_variables=["topic", "wiki_summary"],
+            input_variables=["topic"],
             template='Given the topic "{topic}", generate a list of the overall top 10 countries specifically related to "{topic}" ranked from 10th place to 1st place.\
     Your response should be in an array format, like this:\
     ["Country 10th place", "Country 9th place", "Country 8th place", "Country 7th place",\
-    "Country 6th place", "Country 5th place", "Country 4th place", "Country 3rd place", "Country 2nd place", "Country 1st place"]. Use the wiki_summary as a source of inspiration if needed: "{wiki_summary}"'
+    "Country 6th place", "Country 5th place", "Country 4th place", "Country 3rd place", "Country 2nd place", "Country 1st place"]. Make sure your response is correct before responding"'
         )
 
         llm = OpenAI(temperature=0.5)
         video_chain = LLMChain(llm=llm, prompt=video_template, verbose=True)
 
-        response = video_chain.run(
-            {"topic": user_input, "wiki_summary": wiki_summary})
+        response = video_chain.run({"topic": user_input})
         # For testing the code without making openai calls $$$
-        # response = '["North Korea", "France", "China", "United Kingdom", "India", "Pakistan", "Israel", "Russia", "United States", "Iran"]'
+        #response = '["North Korea", "France", "China", "United Kingdom", "India", "Pakistan", "Israel", "Russia", "United States", "Iran"]'
         st.write(response)
+        #st.write(TextClip.list('color'))
         import tempfile
 
         def save_uploaded_file(uploaded_file):
