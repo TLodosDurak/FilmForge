@@ -239,16 +239,15 @@ def main():
                     [["Country"], ["Why?"], ["What?"], ["google_image_search_query"]], [["Country"], ["Why?"], ["What?"], ["google_image_search_query"]],\
                     [["Country"], ["Why?"], ["What?"], ["google_image_search_query"]], [["Country"], ["Why?"], ["What?"], ["google_image_search_query"]],\
                     [["Country"], ["Why?"], ["What?"], ["google_image_search_query"]], [["Country"], ["Why?"], ["What?"], ["google_image_search_query"]]]\
-                    Do not forget to put your response in a 3D array format and make Why? no more than 3 words,\
-                    What? is a fact or name related to Why? and its also very concise no more than 3 words.\
-                    google_image_search_query is a google image search query that fits the country/topic as well as the What? if its an easy search (avoid numbers unless a year)\
-                    Make sure response is in the correct oreder! 10th place first and 1st place last!'
+                    Make Why? no more than 3 words, What? is a fact or name related to Why? and its also very concise no more than 3 words.\
+                    google_image_search_query is a google image search query that fits the country/topic as well as the What? if its an easy search (avoid numbers unless a year) also no more than 3 words\
+                    Make sure response is in the correct order! 10th place first and 1st place last!'
         )
         video_template4 = PromptTemplate(
             input_variables=['topic'],
             template= "Please provide a list of top 10 countries related to the topic '{topic}', starting from 10th place and including the following details for each country in a 3D array format made up of: [['Country'], ['Why?'], ['What?'], ['google_image_search_query']]. The 'Why?' field should not be more than 3 words and the 'What?' field should be a fact or name related to the 'Why?' field that is also no more than 3 words. The 'google_image_search_query' field should be a search query that accurately represents the country and the 'What?' field, and should avoid using numbers. Please ensure that your response is only the 3D array and nothing else."
         )
-        llm = OpenAI(temperature=0)
+        llm = OpenAI(model_name='text-davinci-003', temperature=0)
         video_chain3 = LLMChain(llm=llm, prompt=video_template3, verbose=True)
         with st.spinner("Waiting for OpenAI response..."):
             response = video_chain3.run({"topic": user_input})
