@@ -247,7 +247,7 @@ def main():
             input_variables=['topic'],
             template= "Please provide a list of top 10 countries related to the topic '{topic}', starting from 10th place and including the following details for each country in a 3D array format made up of: [['Country'], ['Why?'], ['What?'], ['google_image_search_query']]. The 'Why?' field should not be more than 3 words and the 'What?' field should be a fact or name related to the 'Why?' field that is also no more than 3 words. The 'google_image_search_query' field should be a search query that accurately represents the country and the 'What?' field, and should avoid using numbers. Please ensure that your response is only the 3D array and nothing else."
         )
-        llm = OpenAI(model_name='text-davinci-003', temperature=0)
+        llm = OpenAI(model_name='text-davinci-003', temperature=0.5)
         video_chain3 = LLMChain(llm=llm, prompt=video_template3, verbose=True)
         with st.spinner("Waiting for OpenAI response..."):
             response = video_chain3.run({"topic": user_input})
