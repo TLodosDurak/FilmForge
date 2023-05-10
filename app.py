@@ -26,13 +26,26 @@ def download_image(url: str, file_path: str) -> bool:
     try:
         response = requests.get(url)
         if response.status_code == 200:
-            with open(file_path, "wb") as file:
-                file.write(response.content)
-            return True
+            content_type = response.headers.get("Content-Type")
+            if content_type and "image" in content_type and len(response.content) > 1024:  # Check if content type is an image and its size is more than 1KB
+                with open(file_path, "wb") as file:
+                    file.write(response.content)
+                return True
+            else:
+                return False
         else:
             return False
     except requests.exceptions.RequestException as e:
         print(f"Error downloading image: {e}")
+        return False
+    
+def is_image_readable(file_path: str) -> bool:
+    try:
+        with Image.open(file_path) as img:
+            img.verify()  # This will raise an exception if the image is not readable
+        return True
+    except Exception as e:
+        print(f"Error reading image: {e}")
         return False
 
 
@@ -114,19 +127,23 @@ def create_video(ranking_list, topic, bg_videos=None, bg_music=None):
 
     google_search = CustomGoogleSearchAPIWrapper()
     with st.expander("Click to expand google image search queries"):
+        j = 0
         for i in range(len(ranking_list), 0, -1):
-            media_query = f"{topic} {ranking_list[j][0][0]} {ranking_list[j][2][0]}"
+            media_query = f"{ranking_list[j][3][0]}"
             st.write(media_query)
-            media_results = google_search.search_media(media_query)
-            # pic from top 5 results
+            media_results = google_search.search_media(media_query, num_results=3)
+            # pic from top 3 results
             media_file_path = f"media_{j}.jpg"
             image_downloaded = False
 
-            for media in media_results[:5]:
+            for media in media_results[:3]:
                 media_url = media["link"]
-                image_downloaded = download_image(media_url, media_file_path)
-                if image_downloaded:
-                    break
+                if not image_downloaded:
+                    image_downloaded = download_image(media_url, media_file_path)
+                    if image_downloaded and is_image_readable(media_file_path):  # Check if the image is readable
+                        break
+                else:
+                    image_downloaded = False
 
             if not image_downloaded:
                 media_file_path = None  # Skip using the image if the download fails
@@ -204,46 +221,42 @@ def main():
         # wiki = WikipediaAPIWrapper()
         # wiki_prompt = 'Top 10 Country' + user_input  # More detailed prompt for wiki
         # wiki_summary = wiki.run(wiki_prompt)
-        video_template = PromptTemplate(
+        video_template3 = PromptTemplate(
             input_variables=["topic"],
-            template='Given the topic "{topic}", generate a list of the overall top 10 countries good/abundant/unqiue\
-                    in specifically related to "{topic}" ranked from 10th place to 1st place.\
-                    Your response should be in an array format, like this:\
-                    ["Country 10th place", "Country 9th place", "Country 8th place", "Country 7th place",\
-                    "Country 6th place", "Country 5th place", "Country 4th place", "Country 3rd place",\
-                    "Country 2nd place", "Country 1st place"]. Make sure your response is correct before responding"'
-        )
-        video_template2 = PromptTemplate(
-            input_variables=["topic"],
-            template='Compute 10th country best in specifically related to "{topic}",\
-                    Compute 9th country best in specifically related to "{topic}",\
-                    Compute 8th country best in specifically related to "{topic}"\
-                    Compute 7th country best in specifically related to "{topic}"\
-                    Compute 6th country best in specifically related to "{topic}"\
-                    Compute 5th country best in specifically related to "{topic}"\
-                    Compute 4th country best in specifically related to "{topic}"\
-                    Compute 3rd country best in specifically related to "{topic}"\
+            template='Compute 1st country best in specifically related to "{topic}"\
                     Compute 2nd country best in specifically related to "{topic}"\
-                    Compute 1st country best in specifically related to "{topic}"\
-                    Your response should be in an array format, like this:\
-                    [[["Country 10th place"], ["Why?"], ["What?"]], [["Country 9th place"], ["Why?"], ["What?"]],\
-                    [["Country 8th place"], ["Why?"], ["What?"]], [["Country 7th place"], ["Why?"], ["What?"]],\
-                    [["Country 6th place"], ["Why?"], ["What?"]], [["Country 5th place"], ["Why?"], ["What?"]],\
-                    [["Country 4th place"], ["Why?"], ["What?"]], [["Country 3rd place"], ["Why?"], ["What?"]]\
-                    [["Country 2nd place"], ["Why?"], ["What?"]], [["Country 1st place"], ["Why?"], ["What?"]]\
+                    Compute 3rd country best in specifically related to "{topic}"\
+                    Compute 4th country best in specifically related to "{topic}"\
+                    Compute 5th country best in specifically related to "{topic}"\
+                    Compute 6th country best in specifically related to "{topic}"\
+                    Compute 7th country best in specifically related to "{topic}"\
+                    Compute 8th country best in specifically related to "{topic}"\
+                    Compute 9th country best in specifically related to "{topic}"\
+                    Compute 10th country best in specifically related to "{topic}"\
+                    Your response should be in an valid JSON 3D array format, like this starting from 10th place and ascending:\
+                    [[["Country"], ["Why?"], ["What?"], ["google_image_search_query"]], [["Country"], ["Why?"], ["What?"], ["google_image_search_query"]],\
+                    [["Country"], ["Why?"], ["What?"], ["google_image_search_query"]], [["Country"], ["Why?"], ["What?"], ["google_image_search_query"]],\
+                    [["Country"], ["Why?"], ["What?"], ["google_image_search_query"]], [["Country"], ["Why?"], ["What?"], ["google_image_search_query"]],\
+                    [["Country"], ["Why?"], ["What?"], ["google_image_search_query"]], [["Country"], ["Why?"], ["What?"], ["google_image_search_query"]],\
+                    [["Country"], ["Why?"], ["What?"], ["google_image_search_query"]], [["Country"], ["Why?"], ["What?"], ["google_image_search_query"]]]\
                     Do not forget to put your response in a 3D array format and make Why? no more than 3 words,\
-                    What? is a fact or name related to Why? and its also very concise no more than 3 words'
+                    What? is a fact or name related to Why? and its also very concise no more than 3 words.\
+                    google_image_search_query is a google image search query that fits the country/topic as well as the What? if its an easy search (avoid numbers unless a year)\
+                    Make sure response is in the correct oreder! 10th place first and 1st place last!'
         )
-
+        video_template4 = PromptTemplate(
+            input_variables=['topic'],
+            template= "Please provide a list of top 10 countries related to the topic '{topic}', starting from 10th place and including the following details for each country in a 3D array format made up of: [['Country'], ['Why?'], ['What?'], ['google_image_search_query']]. The 'Why?' field should not be more than 3 words and the 'What?' field should be a fact or name related to the 'Why?' field that is also no more than 3 words. The 'google_image_search_query' field should be a search query that accurately represents the country and the 'What?' field, and should avoid using numbers. Please ensure that your response is only the 3D array and nothing else."
+        )
         llm = OpenAI(temperature=0)
-        video_chain1 = LLMChain(llm=llm, prompt=video_template, verbose=True)
-        video_chain2 = LLMChain(llm=llm, prompt=video_template2, verbose=True)
-
-        response = video_chain2.run({"topic": user_input})
-        ranking_list = convert_openai_response(response)
-        # For testing the code without making openai calls $$$
-        #response = '["North Korea", "France", "China", "United Kingdom", "India", "Pakistan", "Israel", "Russia", "United States", "Iran"]'
-        #st.write(response)
+        video_chain3 = LLMChain(llm=llm, prompt=video_template3, verbose=True)
+        with st.spinner("Waiting for OpenAI response..."):
+            response = video_chain3.run({"topic": user_input})
+            ranking_list = convert_openai_response(response)
+            # For testing the code without making openai calls $$$
+            #response = '["North Korea", "France", "China", "United Kingdom", "India", "Pakistan", "Israel", "Russia", "United States", "Iran"]'
+            with st.expander("Click to expand OpenAI response:"):
+                st.write(response)
         #with st.expander("Click to expand st color options"):
         #    st.write(TextClip.list('color'))
         import tempfile
