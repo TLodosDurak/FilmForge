@@ -32,7 +32,7 @@ def main():
     #Background music upload
     uploaded_bg_music = st.file_uploader("Choose a background music file", type=['mp3', 'wav'])
     #Creating chains
-    llm = OpenAI(model_name='text-davinci-003', temperature=0.5)
+    llm = OpenAI(model_name='text-davinci-003', temperature=0.2)
     video_chain4 = LLMChain(llm=llm, prompt=video_template4, verbose=True)
     fact_check_chain = LLMChain(llm=llm,prompt=fact_check_template, verbose=True)
     #OpenAI Call Button
@@ -58,15 +58,9 @@ def main():
                 st.write("Initial Response:", response)
                 st.write("Fact Checked Response:", st.session_state.ranking_list)
             st.session_state.generate_video = True
-            print(f'generate_video_button: {generate_video_button}\n')
     if generate_video_button and st.session_state.generate_video:
-        print('Generate Video Button clicked')
         if user_input:
-            print(f'generate_video_button: {generate_video_button}\n')
-            print(f'user_input: {user_input}\n')
-            print('Button Clicked')
             st.session_state.generate_video = False
-            print(isinstance(st.session_state.ranking_list, list))
             if isinstance(st.session_state.ranking_list, list):
                 temp_bg_video_paths = [save_uploaded_file(video) for video in uploaded_bg_videos]
                 bg_videos = [VideoFileClip(path) for path in temp_bg_video_paths]
