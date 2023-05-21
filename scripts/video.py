@@ -4,14 +4,17 @@ from av import AVError
 from scripts.custom_google_search import CustomGoogleSearchAPIWrapper
 import streamlit as st
 from scripts.utils import *
+from moviepy.video.fx.all import margin
 
 
 
 
-def create_title_card(title_text, duration=4, bg_video=None):
+
+def create_title_card_variant0(title_text, duration=5, bg_video=None):
     title_clip = TextClip(title_text, fontsize=45, font="Arial-Bold",
                           color='YellowGreen', size=(540, 960), method='caption', align='center', stroke_color='black', stroke_width=2)
-    title_clip = title_clip.set_duration(duration)
+    title_clip = title_clip.set_position(('center', 250)).set_duration(duration)
+    title_clip = title_clip.margin(left=50, right=50, bottom=20, top=20)
 
     if bg_video is not None:
         bg_video = bg_video.resize(height=960, width=540)
@@ -22,10 +25,43 @@ def create_title_card(title_text, duration=4, bg_video=None):
 
     return title_card
 
+# def create_title_card_variant1(title_text, duration=4, bg_video=None):
+#     title_clip = TextClip(title_text, fontsize=70, font="Amiri-Bold",
+#                           color='Red', size=(540, 960), method='caption', align='center',
+#                           stroke_color='black', stroke_width=3)
+#     title_clip = title_clip.set_duration(duration)
+#     title_clip = title_clip.margin(left=20, right=20, top=20, bottom=20)
 
-def create_ranking_frame(rank, country, why, what, duration=2, bg_video=None, media_file_path=None):
+#     if bg_video is not None:
+#         bg_video = bg_video.resize(height=960, width=540)
+#         bg_video = bg_video.set_duration(duration)
+#         title_card = CompositeVideoClip([bg_video, title_clip.set_pos('center')])
+#     else:
+#         title_card = title_clip
+
+#     return title_card
+
+# def create_title_card_variant2(title_text, duration=4, bg_video=None):
+#     title_clip = TextClip(title_text, fontsize=60, font="Courier-Bold",
+#                           color='white', size=(540, 960), method='caption', align='west',
+#                           stroke_color='black', stroke_width=3)
+#     title_clip = title_clip.set_duration(duration)
+#     title_clip = title_clip.margin(left=50, right=50, bottom=20, top=200)
+
+#     if bg_video is not None:
+#         bg_video = bg_video.resize(height=960, width=540)
+#         bg_video = bg_video.set_duration(duration)
+#         title_card = CompositeVideoClip([bg_video, title_clip.set_pos(('center', 'bottom'))])
+#     else:
+#         title_card = title_clip
+
+#     return title_card
+
+
+def create_ranking_frame(rank, country, why, what, duration=2.5, bg_video=None, media_file_path=None):
     canvas_clip = TextClip(f" ", fontsize=45, font="Arial-Bold",
                         color='White', size=(540, 960), stroke_color='black', stroke_width=2, transparent= True)
+    canvas_clip = canvas_clip.margin(left=50, right=50, bottom=20, top=20)
     txt_clip = TextClip(f"Rank {rank}: {country}", fontsize=45, font="Arial-Bold",
                         color='YellowGreen', size=(540, 960), method='caption', align='center', stroke_color='black', stroke_width=2)
     why_clip = TextClip(f"{why}", fontsize=35, font="Arial-Bold",
@@ -75,7 +111,7 @@ def create_video(ranking_list, topic, bg_videos=None, bg_music=None):
         bg_video = bg_videos[j % len(bg_videos)] if bg_videos else None
     else:
         bg_video = None
-    clips.append(create_title_card(title_text, bg_video=bg_video))
+    clips.append(create_title_card_variant0(title_text, bg_video=bg_video))
 
     google_search = CustomGoogleSearchAPIWrapper()
     with st.expander("Click to expand google image search queries"):
