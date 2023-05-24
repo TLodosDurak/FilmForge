@@ -58,11 +58,16 @@ def main():
         llm=llm, prompt=fact_check_template, verbose=True)
 
     openai_button = st.button("Make OpenAI Call")  # OpenAI Call Button
-    # OpenAI Call Bypass Radio Button
-    openai_bypass = st.radio('Bypass OpenAI Call?', ('No', 'Yes'))
     user_entered_response = ""
-    if openai_bypass == 'Yes':
+    #if openai_bypass == 'Yes':
+    with st.expander('Advanced OpenAI Settings'):
+        # OpenAI Call Bypass Radio Button
+        openai_bypass = st.radio('Bypass OpenAI Call?', ('No', 'Yes'))
         user_entered_response = st.text_area("Enter your own response")
+        submit_button = st.button("Submit Response")
+        if submit_button:
+            st.session_state.ranking_list = convert_openai_response(user_entered_response)
+            st.write(st.session_state.ranking_list)
     # Initialize the session state
     if 'generate_video' not in st.session_state:
         st.session_state.generate_video = False
@@ -100,54 +105,58 @@ def main():
                 except Exception as e:
                     st.error(
                         f'Error occurred while parsing user entered response: {e}')
+    with st.expander("Advanced Generate Video Settings"):
+            include_flag = st.radio('Include Country flag?', ('No', 'Yes'))
     if generate_video_button:
         if user_input.strip() == '':
             st.error('Error: Input field is empty. Please enter a topic.')
         elif (st.session_state.get('generate_video') and user_input) or openai_bypass == 'Yes':
-            st.session_state.generate_video = False
+            with st.spinner("Generating video...\n this might take a minute!"):
 
-            ranking_frame_videos = []
-            ranking_frame_videos.append(get_video_from_pexels(user_input))
-            if ranking_frame_videos[0] is not None:
-                download_video(ranking_frame_videos[0], 'ranking_frame_0.mp4')
+                st.session_state.generate_video = False
 
-            for j in range(len(st.session_state.ranking_list)):
-                country_name = st.session_state.ranking_list[j][0][0]
-                video = get_video_from_pexels(country_name)
-                if video is not None:
-                    download_video(video, f'ranking_frame_{j+1}.mp4')
-                    ranking_frame_videos.append(f'ranking_frame_{j+1}.mp4')
+                ranking_frame_videos = []
+                ranking_frame_videos.append(get_video_from_pexels(user_input))
+                if ranking_frame_videos[0] is not None:
+                    download_video(ranking_frame_videos[0], f'ranking_frame_0.mp4')
+                for j in range(len(st.session_state.ranking_list)):
+                    country_name = st.session_state.ranking_list[j][0][0]
+                    video = get_video_from_pexels(country_name)
+                    if video is not None:
+                        download_video(video, f'ranking_frame_{j+1}.mp4')
+                        ranking_frame_videos.append(f'ranking_frame_{j+1}.mp4')
 
-            if isinstance(st.session_state.ranking_list, list):
-                bg_videos = [VideoFileClip(path)
-                             for path in ranking_frame_videos]
+                if isinstance(st.session_state.ranking_list, list):
+                    try:
+                        bg_videos = [VideoFileClip(path)
+                                    for path in ranking_frame_videos]
+                    except Exception as e:
+                        st.error(f'Error occurred while creating video clips: {e}')
+                    default_audio_file_path = r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\default_audio.mp3'
+                    with open(default_audio_file_path, 'rb') as default_audio_file:
+                        bg_music = default_audio_file.name if uploaded_bg_music is None else save_uploaded_file(
+                            uploaded_bg_music)
 
-                default_audio_file_path = r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\default_audio.mp3'
-                with open(default_audio_file_path, 'rb') as default_audio_file:
-                    bg_music = default_audio_file.name if uploaded_bg_music is None else save_uploaded_file(
-                        uploaded_bg_music)
-
-                    with st.spinner("Generating video...\n this might take a minute!"):
                         # This line creates the video using the ranking list.
                         try:
                             create_video(st.session_state.ranking_list,
-                                         user_input, bg_videos, bg_music)
+                                        user_input, include_flag, bg_videos=bg_videos, bg_music=bg_music)
                         except Exception as e:
                             st.error(
                                 f'Error occurred while generating video: {e}')
 
-                if os.path.exists("ranking_video.mp4"):
-                    st.video("ranking_video.mp4")
+                    if os.path.exists("ranking_video.mp4"):
+                        st.video("ranking_video.mp4")
 
-                for video_clip in bg_videos:  # Close video clips before deleting the temporary files
-                    video_clip.close()
+                    for video_clip in bg_videos:  # Close video clips before deleting the temporary files
+                        video_clip.close()
 
-                for video_path in ranking_frame_videos:  # Remove the video files
-                    if os.path.exists(video_path):
-                        os.remove(video_path)
+                    for video_path in ranking_frame_videos:  # Remove the video files
+                        if os.path.exists(video_path):
+                            os.remove(video_path)
 
-                if uploaded_bg_music is not None:
-                    os.remove(bg_music)
+                    if uploaded_bg_music is not None:
+                        os.remove(bg_music)
         else:
             st.error(
                 'Error: No JSON object to make a video out of. Click "Make OpenAICall" before this button.')
@@ -167,8 +176,7 @@ def main():
         ])
     description = user_input + \
         ' Top10 Countries.\n What do you want to see next?'  # Video description
-    tags = [user_input, "top10", "shorts", "country", "rankings", "countryrankings", st.session_state.ranking_list[9]
-            [0][0], st.session_state.ranking_list[8][0][0], st.session_state.ranking_list[7][0][0]]  # List of tags
+    tags = [user_input, st.session_state.ranking_list[9][0][0], st.session_state.ranking_list[8][0][0], st.session_state.ranking_list[7][0][0]]  # List of tags
     if upload_video_button:
         st.markdown(
             f"**Preview of video to be uploaded:**\n\n**Title:** {title}\n\n**Description:** {description}\n\n**Tags:** {tags}")

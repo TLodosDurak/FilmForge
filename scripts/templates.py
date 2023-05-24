@@ -23,6 +23,7 @@ video_template4 = PromptTemplate(
     [["Ireland"], ["Medieval Strongholds"], ["Blarney Castle"], ["Ireland Castles"]],\
     [["Czech Republic"], ["Bohemian Castles"], ["Prague Castle"], ["Czech Republic Castles"]],\
     [["Japan"], ["Japanese Castles"], ["Himeji Castle"], ["Japan Castles"]]]\
+    \
     Input: Military Ranking\
     \
     Output:[[["Turkey"], ["Regional Power]", ["Strategic Location]", "[Turkey Military"]],\
@@ -100,12 +101,18 @@ fact_check_template = PromptTemplate(
                 [["Belgium"], ["Rising Talent"], ["Jupiler Pro League"], ["Belgium Soccer"]],\
                 [["Brazil"], ["Jogo Bonito"], ["Campeonato Brasileiro"], ["Brazil Soccer"]]]\
         \
-        Input: \
-        \
-        Output: \
-        \
         Input: {response}\
         \
         Output: '
+
+)
+
+video_template5 = PromptTemplate(
+    input_variables=['topic'],
+    template='Determine the top 10 elements specifically related to given input, starting from the 10th best to the 1st. Your response should be a valid JSON 3D array format, starting from the 10th place and ascending to the 1st. The format should be as follows: [["Element"], ["Reason"], ["Fact"], ["Google Image Search Query"]], with each element represented in a similar manner. The "Reason" should be concise, no more than three words, explaining why the element is ranked at that position. The "Fact" is a brief fact or name related to the "Reason", also limited to three words. The "Google Image Search Query" should be a suitable search term for images related to the element and the topic, avoiding numbers unless it is a year, and should also be no more than three words Ensure the response is in the correct order, with the 10th place first and the 1st place last.\
+    \
+    Input: {topic}\
+    \
+    Output: '
 
 )
