@@ -59,10 +59,10 @@ def upload_video(youtube, filename, title, description, tags):
                 "description": description,
                 "title": title,
                 "tags": tags,  # List of tags
-                "madeForKids": False
             },
             "status": {
                 "privacyStatus": "public",
+                "selfDeclaredMadeForKids": False,
             }
         },
         media_body=MediaFileUpload(filename)
