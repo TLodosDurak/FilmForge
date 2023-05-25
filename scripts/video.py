@@ -5,17 +5,24 @@ from scripts.custom_google_search import CustomGoogleSearchAPIWrapper
 import streamlit as st
 from scripts.utils import *
 from moviepy.video.fx.all import margin, resize, crop
+import cv2
+import numpy as np
 
+def convert_frame_to_rgb(frame):
+    return cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-def create_title_card_variant0(title_text, duration=4.85, bg_video=None):
-    canvas_clip = TextClip(f" ", fontsize=45, font="Arial-Bold",
+def create_title_card_variant0(title_element, title_topic, duration=4.85, bg_video=None, title_media_file_path=None):
+    canvas_clip = TextClip(f" ", fontsize=45, font="Calibri-Bold",
                            color='White', size=(540, 960), stroke_color='black', stroke_width=2, transparent=True)
     canvas_clip = canvas_clip.set_duration(duration)
-    title_clip = TextClip(title_text, fontsize=60, font="Arial-Bold",
+    element_clip = TextClip(title_element, fontsize=90, font="Calibri-Bold",
                           color='YellowGreen', size=(540, 960), method='caption', align='center', stroke_color='black', stroke_width=2)
-    title_clip = title_clip.set_position(
-        ('center', -150)).set_duration(duration)
-    # title_clip = title_clip.margin(left=50, right=50, bottom=20, top=20)
+    element_clip = element_clip.set_position(
+        ('center', -350)).set_duration(duration)
+    topic_clip = TextClip(title_topic, fontsize=60, font="Calibri-Bold",
+                          color='Firebrick', size=(540, 960), method='caption', align='center', stroke_color='black', stroke_width=2)
+    topic_clip = topic_clip.set_position(
+        ('center', -200)).set_duration(duration)
 
     if bg_video is not None:
         # Fit the video to the height of the canvas
@@ -25,22 +32,41 @@ def create_title_card_variant0(title_text, duration=4.85, bg_video=None):
             bg_video = bg_video.fx(crop, width=540)
 
         bg_video = bg_video.set_duration(duration)
-        title_card = CompositeVideoClip([canvas_clip, bg_video, title_clip])
-    else:
-        title_card = CompositeVideoClip([canvas_clip, title_clip])
 
+    if title_media_file_path is not None:
+        media_clip = ImageClip(title_media_file_path).set_duration(duration)
+        # Resize the media clip as needed
+        media_clip = media_clip.resize(height=300)
+        # Convert the image to RGB
+        #media_clip = media_clip.fl_image(convert_frame_to_rgb)
+        # Position the media clip on the frame
+        if media_clip is None:
+            print(
+                f"Failed to resize the media file: {title_media_file_path}")
+        else:
+            if media_clip.h is not None:
+                media_clip = media_clip.set_position(("center", 550))
+        if bg_video is not None:
+            title_card = CompositeVideoClip([canvas_clip, bg_video, media_clip, element_clip, topic_clip])
+        else:
+            title_card = CompositeVideoClip([canvas_clip, media_clip, element_clip, topic_clip])
+    else: 
+        if bg_video is not None:
+            title_card = CompositeVideoClip([canvas_clip, bg_video, element_clip, topic_clip])
+        else:
+            title_card = CompositeVideoClip([canvas_clip, element_clip, topic_clip])
     return title_card
 
 
 def create_ranking_frame(rank, country, why, what, duration=1.95, bg_video=None, media_file_paths=None):
-    canvas_clip = TextClip(f" ", fontsize=45, font="Arial-Bold",
+    canvas_clip = TextClip(f" ", fontsize=45, font="Calibri-Bold",
                            color='White', size=(540, 960), stroke_color='black', stroke_width=2, transparent=True)
     # canvas_clip = canvas_clip.margin(left=50, right=50, bottom=20, top=20)
-    txt_clip = TextClip(f"Rank {rank}: {country}", fontsize=45, font="Arial-Bold",
+    txt_clip = TextClip(f"Rank {rank}: {country}", fontsize=45, font="Calibri-Bold",
                         color='YellowGreen', size=(540, 960), method='caption', align='center', stroke_color='black', stroke_width=2)
-    why_clip = TextClip(f"{why}", fontsize=35, font="Arial-Bold",
+    why_clip = TextClip(f"{why}", fontsize=35, font="Calibri-Bold",
                         color='white', size=(540, 960), method='caption', align='center', stroke_color='black', stroke_width=2)
-    what_clip = TextClip(f"{what}", fontsize=35, font="Arial-Bold",
+    what_clip = TextClip(f"{what}", fontsize=35, font="Calibri-Bold",
                          color='white', size=(540, 960), method='caption', align='center', stroke_color='black', stroke_width=2)
 
     canvas_clip = canvas_clip.set_duration(duration)
@@ -61,27 +87,29 @@ def create_ranking_frame(rank, country, why, what, duration=1.95, bg_video=None,
         media_clips = []
         for media_file_path in media_file_paths:
             try:
-                media_clip = ImageClip(media_file_path).set_duration(duration)
-                # Resize the media clip as needed
-                media_clip = media_clip.resize(height=300)
-                # Position the media clip on the frame
-                if media_clip is None:
-                    print(
-                        f"Failed to resize the media file: {media_file_path}")
-                else:
-                    # For the first image, place it in the center bottom
-                    if len(media_clips) == 0:
-                        # This is the first image, place it in the center bottom
-                        if media_clip.h is not None:
-                            media_clip = media_clip.set_position(
-                                ("center", 960 - media_clip.h - 550))
-                        else:
-                            media_clip = media_clip.set_position("center")
-                    # For the flag image (second image), place it in the upper right corner
+                    media_clip = ImageClip(media_file_path).set_duration(duration)
+                    # Resize the media clip as needed
+                    # Convert the image to RGB
+                    #media_clip = media_clip.fl_image(convert_frame_to_rgb)
+                    media_clip = media_clip.resize(height=300)
+                    # Position the media clip on the frame
+                    if media_clip is None:
+                        print(
+                            f"Failed to resize the media file: {media_file_path}")
                     else:
-                        media_clip = media_clip.set_position(("center", 450))
+                        # For the first image, place it in the center bottom
+                        if len(media_clips) == 0:
+                            # This is the first image, place it in the center bottom
+                            if media_clip.h is not None:
+                                media_clip = media_clip.set_position(
+                                    ("center", 960 - media_clip.h - 550))
+                            else:
+                                media_clip = media_clip.set_position("center")
+                        # For the flag image (second image), place it in the upper right corner
+                        else:
+                            media_clip = media_clip.set_position(("center", 450))
 
-                media_clips.append(media_clip)
+                    media_clips.append(media_clip)
 
             except AVError:
                 print(f"Error processing the media file: {media_file_path}")
@@ -109,16 +137,38 @@ def create_video(ranking_list, topic, include_flag, elements='Countries', bg_vid
         clips = []
         j = 0
         # Title card
-        title_text = f"Top 10 {elements}: {topic}"
+        title_element = f"Top 10:"
+        title_topic = f"{topic}"
         if bg_videos is not None:
             bg_video = bg_videos[j % len(bg_videos)] if bg_videos else None
         else:
             bg_video = None
 
-        title_card = create_title_card_variant0(title_text, bg_video=bg_video)
+        google_search = CustomGoogleSearchAPIWrapper()
+        #Title Card
+        title_media_query = [(topic + ' country flag')]
+        title_media_results = google_search.search_media(
+                    title_media_query, num_results=3)
+        # pic from top 3 results
+        title_media_file_path = f"media_title.jpg"
+        image_downloaded = False
+        for media in title_media_results[:3]:
+            media_url = media["link"]
+            if not image_downloaded:
+                image_downloaded = download_image(
+                    media_url, title_media_file_path)
+                # Check if the image is readable
+                if image_downloaded and is_image_readable(title_media_file_path):
+                    break
+            else:
+                image_downloaded = False
+
+        if not image_downloaded:
+            title_media_file_path = None  # Skip using the image if the download fails
+        title_card = create_title_card_variant0(title_element, title_topic, bg_video=bg_video, title_media_file_path=title_media_file_path)
         if title_card is not None:
             clips.append(title_card)
-        google_search = CustomGoogleSearchAPIWrapper()
+        #Rest
         with st.expander("Click to expand google image search queries"):
             j = 0
             for i in range(min(10, len(ranking_list)), 0, -1):

@@ -59,15 +59,14 @@ def main():
 
     openai_button = st.button("Make OpenAI Call")  # OpenAI Call Button
     user_entered_response = ""
-    #if openai_bypass == 'Yes':
     with st.expander('Advanced OpenAI Settings'):
         # OpenAI Call Bypass Radio Button
         openai_bypass = st.radio('Bypass OpenAI Call?', ('No', 'Yes'))
-        user_entered_response = st.text_area("Enter your own response")
+        user_entered_response = st.text_area("Enter your own response", st.session_state.ranking_list)
         submit_button = st.button("Submit Response")
         if submit_button:
             st.session_state.ranking_list = convert_openai_response(user_entered_response)
-            st.write(st.session_state.ranking_list)
+            print('Ranking_List:', st.session_state.ranking_list)
     # Initialize the session state
     if 'generate_video' not in st.session_state:
         st.session_state.generate_video = False
@@ -88,11 +87,11 @@ def main():
                 except Exception as e:
                     print(f'Error occurred while calling OpenAI API: {e}')
                 with st.expander("Click to expand OpenAI response:"):
-                    st.write("Initial Response:", response)
-                    st.write("Fact Checked Response:",
-                             st.session_state.ranking_list)
+                    st.write("Fact Checked Response:", fact_checked_response)
+                    st.write("Formatted Response:",st.session_state.ranking_list)
                 st.session_state.generate_video = True
         elif openai_bypass == 'Yes':
+            st.error('Error: Bypass OpenAI is set to Yes')
             st.session_state.generate_video = True
             if user_entered_response.strip() == '':
                 st.error(
@@ -105,6 +104,8 @@ def main():
                 except Exception as e:
                     st.error(
                         f'Error occurred while parsing user entered response: {e}')
+        st.experimental_rerun()
+
     with st.expander("Advanced Generate Video Settings"):
             include_flag = st.radio('Include Country flag?', ('No', 'Yes'))
     if generate_video_button:
@@ -116,12 +117,14 @@ def main():
                 st.session_state.generate_video = False
 
                 ranking_frame_videos = []
-                ranking_frame_videos.append(get_video_from_pexels(user_input))
-                if ranking_frame_videos[0] is not None:
-                    download_video(ranking_frame_videos[0], f'ranking_frame_0.mp4')
+                title_bg = (get_video_from_pexels(user_input))
+        
+                if title_bg is not None:
+                    download_video(title_bg, f'ranking_frame_0.mp4')
+                    ranking_frame_videos.append(f'ranking_frame_0.mp4')
                 for j in range(len(st.session_state.ranking_list)):
-                    country_name = st.session_state.ranking_list[j][0][0]
-                    video = get_video_from_pexels(country_name)
+                    element_name = st.session_state.ranking_list[j][0][0]
+                    video = get_video_from_pexels(element_name)
                     if video is not None:
                         download_video(video, f'ranking_frame_{j+1}.mp4')
                         ranking_frame_videos.append(f'ranking_frame_{j+1}.mp4')
@@ -145,9 +148,6 @@ def main():
                             st.error(
                                 f'Error occurred while generating video: {e}')
 
-                    if os.path.exists("ranking_video.mp4"):
-                        st.video("ranking_video.mp4")
-
                     for video_clip in bg_videos:  # Close video clips before deleting the temporary files
                         video_clip.close()
 
@@ -159,28 +159,31 @@ def main():
                         os.remove(bg_music)
         else:
             st.error(
-                'Error: No JSON object to make a video out of. Click "Make OpenAICall" before this button.')
+                'Error: No JSON object to make a video out of. Click "Make OpenAICall" before this button.\
+                    \nOr by pass it in advanced settings')
 
     if authenticate_button:
         st.session_state.youtube = authenticate_youtube(channel_choice)
 
     upload_video_button = st.button("Upload to YouTube")
+    title = ''
+    description=''
     if user_input.strip() == '':
         st.error(
             'Error: Video title cannot be empty. Please enter a topic for your video.')
     else:
         each_word = user_input.split()
-        title = user_input + ' #' + ' #'.join([
-            'top10',
-            'shorts'
-        ])
+        title = 'The Top 10 ' + user_input
     description = user_input + \
         ' Top10 Countries.\n What do you want to see next?'  # Video description
-    tags = [user_input, st.session_state.ranking_list[9][0][0], st.session_state.ranking_list[8][0][0], st.session_state.ranking_list[7][0][0]]  # List of tags
-    if upload_video_button:
-        st.markdown(
-            f"**Preview of video to be uploaded:**\n\n**Title:** {title}\n\n**Description:** {description}\n\n**Tags:** {tags}")
+    tags = []#[user_input, st.session_state.ranking_list[9][0][0], st.session_state.ranking_list[8][0][0], st.session_state.ranking_list[7][0][0]]  # List of tags
+    with st.expander('Advanced Youtube Settings') as adv_yt:
+        title = st.text_input('Title:',title)
+        description = st.text_area('Description:',description)
+    #if upload_video_button:
+    if os.path.exists("ranking_video.mp4"):
         st.video("ranking_video.mp4")
+
     if st.button("Confirm Upload"):
         if 'youtube' not in st.session_state:
             st.error("You must authenticate YouTube before uploading.")

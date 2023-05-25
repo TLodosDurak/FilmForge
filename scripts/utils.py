@@ -136,10 +136,12 @@ def save_uploaded_file(uploaded_file):
 def convert_openai_response(response):
     try:
         # Print the raw response for debugging
-        print(f"Raw response: {response}")
+        #print(f"Raw response: {response}")
         response = remove_non_printable_chars(
             response)  # Remove non-printable characters
         response = response.strip()
+        response = response.replace("'", '"') #Repalce single quotes with double for json loader
+
         print(f"Response: {response}")  # Print the response for debugging
 
         if not response:
