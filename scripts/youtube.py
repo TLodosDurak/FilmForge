@@ -49,13 +49,20 @@ def authenticate_youtube(channel_choice):
 
     return build('youtube', 'v3', credentials=creds)
 
+def get_channel_category(channel_choice):
+    if channel_choice == '🟡top10countryrankings':
+        return '#top10'
+    elif channel_choice == '🔴Top10AnythingAndMore':
+        return '#anythingtop10'
+    else:
+        raise ValueError(f"Unexpected channel choice: {channel_choice}")
 
 def upload_video(youtube, filename, title, description, tags):
     request = youtube.videos().insert(
         part="snippet,status",
         body={
             "snippet": {
-                "categoryId": "22",
+                "categoryId": "24",
                 "description": description,
                 "title": title,
                 "tags": tags,  # List of tags

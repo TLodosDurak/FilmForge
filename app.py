@@ -9,13 +9,14 @@ from moviepy.editor import VideoFileClip
 import os
 from langchain.llms import OpenAI
 from langchain.chains import LLMChain
-from scripts.utils import convert_openai_response, save_uploaded_file
+from scripts.utils import convert_openai_response, save_uploaded_file, pick_default_audio_path, get_hashtags_list
 from scripts.video import create_video, get_video_from_pexels, download_video
 from scripts.templates import *
 from scripts.youtube import *
 from moviepy.config import change_settings
 from src.audio import *
 from src.videos import *
+from src.videos.default_pexel_bg import get_title_bg1, get_title_bg2, get_default_bg
 
 # Necessary if using Windows
 change_settings(
@@ -32,17 +33,25 @@ def main():
     # Asking for user input
 
     user_input = st.text_input(
-        "Enter the topic of your Top 10 Countries short video")
+        "Enter the topic of your Top 10 Countries short video", 'Countries in Fashion 2023')
     # Pick Youtube Channel
     channel_choice = st.selectbox(
         "Pick YT channel", ('🟡top10countryrankings', '🔴Top10AnythingAndMore'))
     authenticate_button = st.button("Authenticate YouTube")
 
+    if 'channel_category' not in st.session_state:
+        st.session_state.channel_category = ' #fashion'
+
     # For testing the code without making openai calls $$$
     if 'ranking_list' not in st.session_state:
         st.session_state.ranking_list = [[["India"], ["Fashion Hub"], ["Mumbai"], ["indian fashion"]], [["China"], ["Fashion Hub"], ["Shanghai"], ["chinese fashion"]],  [["Australia"], ["Fashion Destination"], ["Sydney"], ["australian fashion"]], [["Germany"], ["Fashion Pioneer"], ["Berlin"], ["german fashion"]], [["Spain"], ["Fashion Icon"], ["Madrid"], ["spanish fashion"]],   [
             ["United States"], ["Fashion Influencer"], ["New York"], ["american fashion"]], [["Japan"], ["Fashion Innovator"], ["Tokyo"], ["japanese fashion"]], [["United Kingdom"], ["Fashion Trendsetter"], ["London"], ["british fashion"]], [["Italy"], ["Fashion Leader"], ["Milan"], ["italian fashion"]],  [["France"], ["Fashion Capital"], ["Paris"], ["french fashion"]]]
-
+    if 'title' not in st.session_state:
+        st.session_state.title = 'Top 10: ' + user_input + st.session_state.channel_category + ' #shorts #fyp '
+    if 'description' not in st.session_state:
+        st.session_state.description = 'Top 10: ' + user_input + '\n Music: 6th String by Dedpled \n' + \
+            '#italy #france #uk #usa #nyc #london #milan #paris #india #mumbai #shangai #sydney #berlin #japan #tokyo #spain #madrid'
+    # Example Meta Data Input: 'India, Mumbai, China, Shanghai, Australia, Sydney, Germany, Berlin, Spain, Madrid, United States, New York, Japan, Tokyo, United Kingdom, London, Italy, Milan, France, Paris'
     # Background video upload
     # uploaded_bg_videos = st.file_uploader("Choose background video files", type=[
     #                                       'mp4', 'avi', 'mov', 'gif'], accept_multiple_files=True)
@@ -56,17 +65,21 @@ def main():
     video_chain4 = LLMChain(llm=llm, prompt=video_template4, verbose=True)
     fact_check_chain = LLMChain(
         llm=llm, prompt=fact_check_template, verbose=True)
+    hashtage_chain = LLMChain(llm=llm, prompt=hashtag_template, verbose=True)
 
     openai_button = st.button("Make OpenAI Call")  # OpenAI Call Button
     user_entered_response = ""
     with st.expander('Advanced OpenAI Settings'):
         # OpenAI Call Bypass Radio Button
         openai_bypass = st.radio('Bypass OpenAI Call?', ('No', 'Yes'))
-        user_entered_response = st.text_area("Enter your own response", st.session_state.ranking_list)
+        user_entered_response = st.text_area(
+            "Enter your own response", st.session_state.ranking_list)
         submit_button = st.button("Submit Response")
         if submit_button:
-            st.session_state.ranking_list = convert_openai_response(user_entered_response)
+            st.session_state.ranking_list = convert_openai_response(
+                user_entered_response)
             print('Ranking_List:', st.session_state.ranking_list)
+
     # Initialize the session state
     if 'generate_video' not in st.session_state:
         st.session_state.generate_video = False
@@ -84,11 +97,19 @@ def main():
                         {"topic": user_input, "response": response})
                     st.session_state.ranking_list = convert_openai_response(
                         fact_checked_response)
+                    print(get_hashtags_list(st.session_state.ranking_list))
+                    hashtag_response = hashtage_chain.run(
+                        {"list": get_hashtags_list(st.session_state.ranking_list)})
+                    print(hashtag_response)
+                    st.session_state.description = 'Top 10: ' + user_input + \
+                        '\n Music: 6th String by Dedpled \n' + hashtag_response
+
                 except Exception as e:
                     print(f'Error occurred while calling OpenAI API: {e}')
                 with st.expander("Click to expand OpenAI response:"):
                     st.write("Fact Checked Response:", fact_checked_response)
-                    st.write("Formatted Response:",st.session_state.ranking_list)
+                    st.write("Formatted Response:",
+                             st.session_state.ranking_list)
                 st.session_state.generate_video = True
         elif openai_bypass == 'Yes':
             st.error('Error: Bypass OpenAI is set to Yes')
@@ -107,7 +128,10 @@ def main():
         st.experimental_rerun()
 
     with st.expander("Advanced Generate Video Settings"):
-            include_flag = st.radio('Include Country flag?', ('No', 'Yes'))
+        include_flag = st.radio('Include Country flag?', ('No', 'Yes'))
+        title_media_query = st.text_input(
+            'Input Thumbnail Search Query', user_input)
+
     if generate_video_button:
         if user_input.strip() == '':
             st.error('Error: Input field is empty. Please enter a topic.')
@@ -117,11 +141,12 @@ def main():
                 st.session_state.generate_video = False
 
                 ranking_frame_videos = []
-                title_bg = (get_video_from_pexels(user_input))
-        
+                # title_bg = (get_video_from_pexels(user_input))
+                title_bg = get_title_bg2()
                 if title_bg is not None:
                     download_video(title_bg, f'ranking_frame_0.mp4')
                     ranking_frame_videos.append(f'ranking_frame_0.mp4')
+
                 for j in range(len(st.session_state.ranking_list)):
                     element_name = st.session_state.ranking_list[j][0][0]
                     video = get_video_from_pexels(element_name)
@@ -132,10 +157,11 @@ def main():
                 if isinstance(st.session_state.ranking_list, list):
                     try:
                         bg_videos = [VideoFileClip(path)
-                                    for path in ranking_frame_videos]
+                                     for path in ranking_frame_videos]
                     except Exception as e:
-                        st.error(f'Error occurred while creating video clips: {e}')
-                    default_audio_file_path = r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\default_audio.mp3'
+                        st.error(
+                            f'Error occurred while creating video clips: {e}')
+                    default_audio_file_path = pick_default_audio_path()
                     with open(default_audio_file_path, 'rb') as default_audio_file:
                         bg_music = default_audio_file.name if uploaded_bg_music is None else save_uploaded_file(
                             uploaded_bg_music)
@@ -143,7 +169,7 @@ def main():
                         # This line creates the video using the ranking list.
                         try:
                             create_video(st.session_state.ranking_list,
-                                        user_input, include_flag, bg_videos=bg_videos, bg_music=bg_music)
+                                         user_input, include_flag, bg_videos=bg_videos, bg_music=bg_music, title_media_query=title_media_query)
                         except Exception as e:
                             st.error(
                                 f'Error occurred while generating video: {e}')
@@ -164,23 +190,24 @@ def main():
 
     if authenticate_button:
         st.session_state.youtube = authenticate_youtube(channel_choice)
-
+        st.session_state.channel_category = get_channel_category(
+            channel_choice)
     upload_video_button = st.button("Upload to YouTube")
-    title = ''
-    description=''
+    tags = []
     if user_input.strip() == '':
         st.error(
             'Error: Video title cannot be empty. Please enter a topic for your video.')
     else:
         each_word = user_input.split()
-        title = 'The Top 10 ' + user_input
-    description = user_input + \
-        ' Top10 Countries.\n What do you want to see next?'  # Video description
-    tags = []#[user_input, st.session_state.ranking_list[9][0][0], st.session_state.ranking_list[8][0][0], st.session_state.ranking_list[7][0][0]]  # List of tags
+        st.session_state.title = 'Top 10: ' + user_input + \
+            st.session_state.channel_category + '#shorts #fyp'
+        # st.session_state.description = 'Top 10: ' + user_input + '\n Music: 6th String by Dedpled \n' + \
+        #     '#fashion #italy #france #uk #usa #nyc #london #milan #paris #india #mumbai #shangai #sydney #berlin #japan #tokyo #spain #madrid'
+
     with st.expander('Advanced Youtube Settings') as adv_yt:
-        title = st.text_input('Title:',title)
-        description = st.text_area('Description:',description)
-    #if upload_video_button:
+        st.session_state.title = st.text_input('Title:', st.session_state.title)
+        st.session_state.description = st.text_area('Description:', st.session_state.description)
+    # if upload_video_button:
     if os.path.exists("ranking_video.mp4"):
         st.video("ranking_video.mp4")
 
@@ -188,9 +215,9 @@ def main():
         if 'youtube' not in st.session_state:
             st.error("You must authenticate YouTube before uploading.")
         else:
-            st.write(f'Uploading video with title: "{title}"')
+            st.write(f'Uploading video with title: "{st.session_state.title}"')
             response = upload_video(
-                st.session_state.youtube, "ranking_video.mp4", title, description, tags)
+                st.session_state.youtube, "ranking_video.mp4", st.session_state.title, st.session_state.description, tags)
             st.write("Video uploaded, video id is: ", response['id'])
 
 

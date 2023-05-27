@@ -4,6 +4,8 @@ media*
 titlecardsDemo.py
 client_secret*
 token*
+temp*
+default_pexel*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

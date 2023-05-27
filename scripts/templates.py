@@ -116,3 +116,16 @@ video_template5 = PromptTemplate(
     Output: '
 
 )
+
+hashtag_template = PromptTemplate(
+        input_variables=['list'],
+        template='Create popular YouTube/TikTok hashtags from the given inputs. Use abbreviations for countries like USA, UK, and cities like NYC if available. No catchy phrases, keep it simple.\
+        \
+        Inputs: Alaska, Kodiak Bears, Norway, Honey Bears, Greenland, Arctic Bears, Japan, Asiatic Bears, China, Giant Pandas, Sweden, Black Bears, Finland, Finland Bears, Canada, Polar Bears, United States, Grizzly Bears, Russia, Brown Bears\
+        \
+        Output: #Alaska #KodiakBears #Norway #HoneyBears #Greenland #ArcticBears #Japan #AsiaticBears #China #GiantPandas #Sweden #BlackBears #Finland #FinlandBears #Canada #PolarBears #USA #GrizzlyBears #Russia #BrownBears\
+        \
+        Inputs: {list}\
+        \
+        Hashtags:'
+)
