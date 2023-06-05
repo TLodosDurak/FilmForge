@@ -13,6 +13,8 @@ from moviepy.editor import concatenate_videoclips
 import numpy as np
 from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
 from src.audio import *
+import streamlit as st
+import ast
 
 
 def shake(clip, amplitude=10):
@@ -36,12 +38,22 @@ def apply_shake_for_duration(clip, duration, amplitude=10):
 def fadein_clip(clip, duration):
     return clip.fx(fadein, duration)
 
+
 def get_hashtags_list(ranking_list):
     hashtags_unformatted_list = []
     for rank in ranking_list:
         hashtags_unformatted_list.append(f'{rank[0][0]}, {rank[2][0]}')
     hashtags_formatted_string = ', '.join(hashtags_unformatted_list)
     return hashtags_formatted_string
+
+
+def get_item_hashtags_list(ranking_list):
+    hashtags_unformatted_list = []
+    for rank in ranking_list:
+        hashtags_unformatted_list.append(f'{rank[0][0]}')
+    hashtags_formatted_string = ', '.join(hashtags_unformatted_list)
+    return hashtags_formatted_string
+
 
 def download_image(url: str, file_path: str) -> bool:
     try:
@@ -182,16 +194,24 @@ def delete_media_files(num_i, num_j) -> None:
                 os.remove(file_path)
 
 
-def remove_non_printable_chars(s):
-    lines = s.splitlines()
-    cleaned_lines = [line for line in lines if line.strip() != "."]
-    return '\n'.join(cleaned_lines)
-
-
 def save_uploaded_file(uploaded_file):
     tfile = tempfile.NamedTemporaryFile(delete=False)
     tfile.write(uploaded_file.getvalue())
     return tfile.name
+
+
+def remove_non_printable_chars(s):
+    # If input is a list
+    if isinstance(s, list):
+        cleaned_list = [[[item.strip() for item in subsublist if item.strip() != "."] for subsublist in sublist] for sublist in s]
+        return cleaned_list
+    elif isinstance(s, str):  # Check if input is a string
+        lines = s.splitlines()
+        cleaned_lines = [line for line in lines if line.strip() != "."]
+        return '\n'.join(cleaned_lines)
+    else:
+        return s  # Return input as it is if it's not string or list
+
 
 
 def convert_openai_response(response):
@@ -200,16 +220,21 @@ def convert_openai_response(response):
         # print(f"Raw response: {response}")
         response = remove_non_printable_chars(
             response)  # Remove non-printable characters
-        response = response.strip()
-        # Repalce single quotes with double for json loader
-        response = response.replace("'", '"')
+
+        if isinstance(response, str):
+            response = response.strip()
+            # Replace single quotes with double for json loader
+            response = response.replace("'", '"')
 
         print(f"Response: {response}")  # Print the response for debugging
 
         if not response:
             raise ValueError("Empty response received")
 
-        ranking_list = json.loads(response)
+        if isinstance(response, str):
+            ranking_list = json.loads(response)
+        else:
+            ranking_list = response  # response is already a list
         return ranking_list
     except json.JSONDecodeError as e:
         print(f"Error: {e}")  # Print the error for debugging
@@ -217,6 +242,71 @@ def convert_openai_response(response):
     except ValueError as e:
         print(f"Error: {e}")
         return "Error: Empty response received."
+
+
+def generate_columns_layout(media_file_paths, queries):
+    # Determine the total number of rows
+    num_rows = len(queries) // 4
+    if len(queries) % 4 > 0:  # If there is a remainder, add an extra row
+        num_rows += 1
+
+    # Create all columns upfront
+    cols = [st.columns(4) for _ in range(num_rows)]
+
+    # Assign images to columns
+    current_row = 0
+    current_col = 0
+    for media_file_path, query in zip(media_file_paths, queries):
+        if media_file_path is not None:
+            image = Image.open(media_file_path)
+            cols[current_row][current_col].image(
+                image, width=100)  # set width to resize the image
+            cols[current_row][current_col].write(
+                query)  # write the query under the image
+            current_col += 1  # move to the next column
+            if current_col >= 4:  # if we have filled all columns in the current row
+                current_row += 1  # move to the next row
+                current_col = 0  # reset to the first column in the new row
+
+    return cols
+
+
+def reverse_response(response_str):
+    try:
+        # If the response is already a list, there's no need to convert it
+        if isinstance(response_str, list):
+            list_response = response_str
+        else:
+            # Convert the string back to a list
+            list_response = ast.literal_eval(response_str)
+
+        # Reverse the list
+        reversed_list = list_response[::-1]
+
+        # Convert the list back to a string
+        reversed_str = str(reversed_list)
+    except Exception as e:
+        print(f"Error while reversing the string: {str(e)}")
+        return response_str  # Return the original string in case of an error
+    return reversed_str
+
+
+def switch_response(response_str):
+    try:
+        # If the response is already a list, there's no need to convert it
+        if isinstance(response_str, list):
+            list_response = response_str
+        else:
+            # Convert the string back to a list
+            list_response = ast.literal_eval(response_str)
+        for i in range(len(list_response)):
+            # Check if the inner list has at least 4 elements
+            if len(list_response[i]) >= 4:
+                list_response[i][3] = [f'{list_response[i][0][0]} {list_response[i][2][0]}']
+    except Exception as e:
+        print(f"Error while switching: {str(e)}")
+        return list_response  # Return the original string in case of an error
+    return list_response
 
 
 def pick_default_audio_path():

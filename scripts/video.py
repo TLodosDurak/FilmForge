@@ -14,43 +14,41 @@ def convert_frame_to_rgb(frame):
 
 
 def create_title_card_variant0(title_element, title_topic, duration=3.90, bg_video=None, title_media_file_path=None):
-    canvas_clip = TextClip(f" ", fontsize=45, font="Calibri-Bold",
-                           color='White', size=(540, 960), stroke_color='black', stroke_width=4, transparent=True)
-    canvas_clip = canvas_clip.set_duration(duration)
-    element_clip = TextClip(title_element, fontsize=110, font="Calibri-Bold",
-                            color='Firebrick', size=(540, 960), method='caption', align='center', stroke_color='black', stroke_width=2)
+    # canvas_clip = TextClip(f" ", fontsize=90, font="Calibri-Bold",
+    #                        color='White', size=(1080, 1920), stroke_color='black', stroke_width=4, transparent=True)
+    #canvas_clip = canvas_clip.set_duration(duration)
+    element_clip = TextClip(title_element, fontsize=220, font="Calibri-Bold",
+                            color='Firebrick', size=(1080, 1920), method='caption', align='center', stroke_color='black', stroke_width=2)
     element_clip = element_clip.set_position(
-        ('center', -350)).set_duration(duration)
-    topic_clip = TextClip(title_topic, fontsize=90, font="Calibri-Bold",
-                          color='YellowGreen', size=(540, 960), method='caption', align='center', stroke_color='black', stroke_width=2)
+        ('center', -700)).set_duration(duration)
+    topic_clip = TextClip(title_topic, fontsize=180, font="Calibri-Bold",
+                          color='YellowGreen', size=(1080, 1920), method='caption', align='center', stroke_color='black', stroke_width=2)
     topic_clip = topic_clip.set_position(
-        ('center', -150)).set_duration(duration)
+        ('center', -300)).set_duration(duration)
     # Add Fade-in Effect
     # element_clip = fadein_clip(element_clip, 0.25) # 1 second fade-in
     # topic_clip = fadein_clip(topic_clip, 0.25)
 
-    #Set margins
-    topic_clip = topic_clip.margin(left=20, right=20, bottom=0, top=0)
+    # Set margins
+    topic_clip = topic_clip.margin(left=40, right=40, bottom=0, top=0)
     if bg_video is not None:
-        # Fit the video to the height of the canvas
-        bg_video = bg_video.fx(resize, height=960)
+        bg_video = VideoFileClip(bg_video)
+        bg_video = bg_video.resize(height=1920)
         # If the video is now wider than the canvas, crop it to the width of the canvas
         if bg_video.w > 540:
-            bg_video = bg_video.fx(crop, width=540)
-
+            bg_video = bg_video.crop(width=1080)
         bg_video = bg_video.set_duration(duration)
 
-        #bg_video = apply_shake_for_duration(bg_video, 1)
+        # bg_video = apply_shake_for_duration(bg_video, 1)
 
-    #title_media_file_path = None
+    # title_media_file_path = None
     if title_media_file_path is not None:
         media_clip = ImageClip(title_media_file_path).set_duration(duration)
         # Resize the media clip as needed
-        media_clip = media_clip.resize(height=300)
+        media_clip = media_clip.resize(height=600)
         # Convert the image to RGB
         # media_clip = media_clip.fl_image(convert_frame_to_rgb)
-        media_clip = media_clip.margin(left=5, right=5, bottom=5, top=5)
-
+        media_clip = media_clip.margin(left=10, right=10, bottom=10, top=10)
 
         # Position the media clip on the frame
         if media_clip is None:
@@ -58,39 +56,39 @@ def create_title_card_variant0(title_element, title_topic, duration=3.90, bg_vid
                 f"Failed to resize the media file: {title_media_file_path}")
         else:
             if media_clip.h is not None:
-                media_clip = media_clip.set_position(("center", 475))
+                media_clip = media_clip.set_position(("center", 950))
                 # Add fade in for media
                 # media_clip =fadein_clip(media_clip, 0.25)
         if bg_video is not None:
             title_card = CompositeVideoClip(
-                [canvas_clip, bg_video, media_clip, element_clip, topic_clip])
+                [bg_video, media_clip, element_clip, topic_clip]) #canvas_clip, 
         else:
             title_card = CompositeVideoClip(
-                [canvas_clip, media_clip, element_clip, topic_clip])
+                [media_clip, element_clip, topic_clip])
     else:
         if bg_video is not None:
             title_card = CompositeVideoClip(
-                [canvas_clip, bg_video, element_clip, topic_clip])
+                [bg_video, element_clip, topic_clip])
         else:
             title_card = CompositeVideoClip(
-                [canvas_clip, element_clip, topic_clip])
+                [element_clip, topic_clip])
     return title_card
 
 
-def create_ranking_frame(rank, country, why, what, duration=2.80, bg_video=None, media_file_paths=None):
-    canvas_clip = TextClip(f" ", fontsize=65, font="Calibri-Bold",
-                           color='White', size=(540, 960), stroke_color='black', stroke_width=4, transparent=True)
-    txt_clip = TextClip(f"#{rank}: {country}", fontsize=75, font="Calibri-Bold",
-                        color='YellowGreen', size=(540, 960), method='caption', align='center', stroke_color='black', stroke_width=2)
-    why_clip = TextClip(f"{why}", fontsize=65, font="Calibri-Bold",
-                        color='white', size=(540, 960), method='caption', align='center', stroke_color='black', stroke_width=2)
-    what_clip = TextClip(f"{what}", fontsize=65, font="Calibri-Bold",
-                         color='Orange', size=(540, 960), method='caption', align='center', stroke_color='black', stroke_width=2)
+def create_counrty_ranking_frame(rank, country, why, what, duration=2.80, bg_video=None, media_file_paths=None):
+    canvas_clip = TextClip(f" ", fontsize=130, font="Calibri-Bold",
+                           color='White', size=(1080, 1920), stroke_color='black', stroke_width=9, transparent=True)
+    txt_clip = TextClip(f"#{rank}: {country}", fontsize=150, font="Calibri-Bold",
+                        color='YellowGreen', size=(1080, 1920), method='caption', align='center', stroke_color='black', stroke_width=4)
+    why_clip = TextClip(f"{why}", fontsize=130, font="Calibri-Bold",
+                        color='white', size=(1080, 1920), method='caption', align='center', stroke_color='black', stroke_width=4)
+    what_clip = TextClip(f"{what}", fontsize=130, font="Calibri-Bold",
+                         color='Orange', size=(1080, 1920), method='caption', align='center', stroke_color='black', stroke_width=4)
 
     canvas_clip = canvas_clip.set_duration(duration)
-    txt_clip = txt_clip.set_position(('center', -300)).set_duration(duration)
-    why_clip = why_clip.set_position(('center', 225)).set_duration(duration)
-    what_clip = what_clip.set_position(('center', 325)).set_duration(duration)
+    txt_clip = txt_clip.set_position(('center', -600)).set_duration(duration)
+    why_clip = why_clip.set_position(('center', 450)).set_duration(duration)
+    what_clip = what_clip.set_position(('center',650)).set_duration(duration)
 
     # Add Fade-in Effect
     # txt_clip = fadein_clip(txt_clip, 0.25) # 1 second fade-in
@@ -98,27 +96,29 @@ def create_ranking_frame(rank, country, why, what, duration=2.80, bg_video=None,
     # what_clip = fadein_clip(what_clip, 0.25)
 
     if bg_video is not None:
-        # Fit the video to the height of the canvas
-        bg_video = bg_video.fx(resize, height=960)
+        bg_video = VideoFileClip(bg_video)
+        bg_video = bg_video.resize(height=1920)
         # If the video is now wider than the canvas, crop it to the width of the canvas
         if bg_video.w > 540:
-            bg_video = bg_video.fx(crop, width=540)
-
+            bg_video = bg_video.crop(width=1080)
         bg_video = bg_video.set_duration(duration)
         # Apply Shake
-        #bg_video = apply_shake_for_duration(bg_video, 1)
+        # bg_video = apply_shake_for_duration(bg_video, 1)
 
     if media_file_paths is not None:
         media_clips = []
         for media_file_path in media_file_paths:
+            if media_file_path is None:
+                media_file_path = r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\img\image_missing.png'
             try:
                 media_clip = ImageClip(media_file_path).set_duration(duration)
                 # Resize the media clip as needed
                 # Convert the image to RGB
                 # media_clip = media_clip.fl_image(convert_frame_to_rgb)
-                media_clip = media_clip.resize(height=300)
+                media_clip = media_clip.resize(height=500)
 
-                media_clip = media_clip.margin(left=5, right=5, bottom=5, top=5)
+                media_clip = media_clip.margin(
+                    left=10, right=10, bottom=10, top=10)
 
                 # Position the media clip on the frame
                 if media_clip is None:
@@ -132,13 +132,13 @@ def create_ranking_frame(rank, country, why, what, duration=2.80, bg_video=None,
                         # This is the first image
                         if media_clip.h is not None:
                             media_clip = media_clip.set_position(
-                                ("center", 425))
+                                ("center", 850))
                         else:
                             media_clip = media_clip.set_position("center")
                     # For the flag image (second image)
                     else:
                         media_clip = media_clip.set_position(
-                            ("center", 960 - media_clip.h - 650))
+                            ("center", 1920 - media_clip.h - 1200))
 
                 media_clips.append(media_clip)
 
@@ -163,47 +163,22 @@ def create_ranking_frame(rank, country, why, what, duration=2.80, bg_video=None,
     return clip
 
 
-def create_video(ranking_list, topic, include_flag, elements='Countries', bg_videos=None, bg_music=None, title_media_query= 'usa flag'):
+def create_country_video(ranking_list, topic, include_flag, include_bg_videos=True, elements='Countries', bg_videos=None, bg_music=None, title_media_query='usa flag'):
     clips = []
     j = 0
     # Title card
-    title_element = f"Top 10:"
+    title_element = f""
     title_topic = f"{topic}"
-    if bg_videos is not None:
-        bg_video = bg_videos[j % len(bg_videos)] if bg_videos else None
+    if bg_videos:
+        bg_video = bg_videos[j % len(bg_videos)]
     else:
         bg_video = None
 
-    google_search = CustomGoogleSearchAPIWrapper()
-    # Title Card
-    title_media_query = [title_media_query]
-    try:
-        title_media_results = google_search.search_media(
-                    title_media_query, num_results=3)
-    except Exception as e:
-        print(f"Error occurred while using Google Search API: {e}")
-        raise e
-
-    # pic from top 3 results
     title_media_file_path = f"media_title.jpg"
-    image_downloaded = False
-    for media in title_media_results[:3]:
-        media_url = media["link"]
-        try:
-            if not image_downloaded:
-                image_downloaded = download_image(
-                    media_url, title_media_file_path)
-                # Check if the image is readable
-                if image_downloaded and is_image_readable(title_media_file_path):
-                    break
-        except Exception as e:
-            print(f"Error occurred while downloading or reading the image: {e}")
-            raise e
-    if not image_downloaded:
-        title_media_file_path = None  # Skip using the image if the download fails
 
     try:
-        title_card = create_title_card_variant0(title_element, title_topic, bg_video=bg_video, title_media_file_path=title_media_file_path)
+        title_card = create_title_card_variant0(
+            title_element, title_topic, bg_video=bg_video, title_media_file_path=title_media_file_path)
         if title_card is not None:
             clips.append(title_card)
     except Exception as e:
@@ -211,60 +186,40 @@ def create_video(ranking_list, topic, include_flag, elements='Countries', bg_vid
         raise e
 
     # Rest
-    with st.expander("Click to expand google image search queries"):
-        j = 0
-        for i in range(min(10, len(ranking_list)), 0, -1):
-            try:
-                media_queries = [f"{ranking_list[j][3][0]}"]
-                if include_flag == 'Yes':
-                    media_queries.append(
-                        f"{ranking_list[j][0][0]} + 'flag'")
-                media_file_paths = []
-                for media_query in media_queries:
-                    st.write(media_query)
-                    media_results = google_search.search_media(
-                        media_query, num_results=3)
-                    # pic from top 3 results
-                    media_file_path = f"media_{j}_{media_queries.index(media_query)}.jpg"
-                    image_downloaded = False
-                    for media in media_results[:3]:
-                        media_url = media["link"]
-                        try:
-                            if not image_downloaded:
-                                image_downloaded = download_image(
-                                    media_url, media_file_path)
-                                # Check if the image is readable
-                                if image_downloaded and is_image_readable(media_file_path):
-                                    break
-                        except Exception as e:
-                            print(f"Error occurred while downloading or reading the image: {e}")
-                            raise e
+    j = 0
+    for i in range(min(10, len(ranking_list)), 0, -1):
+        try:
+            media_file_paths = []
+            if include_flag == 'Yes':
+                media_file_path0 = f"media_{j}_0.jpg"
+                media_file_path1 = f"media_{j}_1.jpg"
+                media_file_paths.append(media_file_path0)
+                media_file_paths.append(media_file_path1)
+            else:
+                media_file_path0 = f"media_{j}_0.jpg"
+                media_file_paths.append(media_file_path0)
+        except Exception as e:
+            print(
+                f"Error occurred while processing the media queries: {e}")
+            raise e
 
-                    if not image_downloaded:
-                        media_file_path = None  # Skip using the image if the download fails
-                    media_file_paths.append(media_file_path)
-            except Exception as e:
-                print(f"Error occurred while processing the media queries: {e}")
-                raise e
+        try:
+            if include_bg_videos and bg_videos:  # include_bg_videos flag added here
+                bg_video = bg_videos[(j + 1) % len(bg_videos)]
+            else:
+                bg_video = None  # Set bg_video to None when include_bg_videos is False
+            ranking_frame = create_counrty_ranking_frame(
+                i, ranking_list[j][0][0], ranking_list[j][1][0], ranking_list[j][2][0],
+                bg_video=bg_video, media_file_paths=media_file_paths)
 
-            try:
-                if bg_videos is None:
-                    bg_video = None
-                else:
-                    bg_video = bg_videos[(j %
-                                        len(bg_videos))+1] if bg_videos else None
-                ranking_frame = create_ranking_frame(
-                    i, ranking_list[j][0][0], ranking_list[j][1][0], ranking_list[j][2][0],
-                    bg_video=bg_video, media_file_paths=media_file_paths)
-
-                if ranking_frame is not None:
-                    ranking_frame = ranking_frame.set_duration(
-                        ranking_frame.duration).set_fps(24)  # set fps to 24
-                clips.append(ranking_frame)
-                j += 1
-            except Exception as e:
-                print(f"Error occurred while creating ranking frames: {e}")
-                raise e
+            if ranking_frame is not None:
+                ranking_frame = ranking_frame.set_duration(
+                    ranking_frame.duration).set_fps(24)  # set fps to 24
+            clips.append(ranking_frame)
+            j += 1
+        except Exception as e:
+            print(f"Error occurred while creating ranking frames: {e}")
+            raise e
 
     try:
         final_video = concatenate_videoclips(clips)
@@ -285,11 +240,6 @@ def create_video(ranking_list, topic, include_flag, elements='Countries', bg_vid
             final_video.write_videofile(
                 "ranking_video.mp4", fps=24, codec='libx264')
     except Exception as e:
-        print(f"Error occurred while processing the final video or writing it to a file: {e}")
-        raise e
-
-    try:
-        delete_media_files(len(ranking_list), len(media_queries))
-    except Exception as e:
-        print(f"Error occurred while deleting media files: {e}")
+        print(
+            f"Error occurred while processing the final video or writing it to a file: {e}")
         raise e

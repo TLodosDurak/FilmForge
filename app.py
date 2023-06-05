@@ -1,4 +1,5 @@
 import pickle
+import json
 from dotenv import load_dotenv
 import streamlit as st
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -9,18 +10,23 @@ from moviepy.editor import VideoFileClip
 import os
 from langchain.llms import OpenAI
 from langchain.chains import LLMChain
-from scripts.utils import convert_openai_response, save_uploaded_file, pick_default_audio_path, get_hashtags_list
-from scripts.video import create_video, get_video_from_pexels, download_video
+from scripts.custom_google_search import CustomGoogleSearchAPIWrapper
+from scripts.utils import convert_openai_response, save_uploaded_file, pick_default_audio_path, get_hashtags_list, switch_response, reverse_response, generate_columns_layout
+from scripts.video import create_country_video, download_image, is_image_readable
 from scripts.templates import *
 from scripts.youtube import *
 from moviepy.config import change_settings
 from src.audio import *
 from src.videos import *
-from src.videos.default_pexel_bg import get_title_bg1, get_title_bg2, get_default_bg
+from src.videos.default_pexel_bg import get_ranking_frame_videos
+from PIL import Image
+
 
 # Necessary if using Windows
 change_settings(
     {"IMAGEMAGICK_BINARY": r"C:\Program Files\ImageMagick-7.1.1-Q16-HDRI\magick.exe"})
+
+google_search = CustomGoogleSearchAPIWrapper()
 
 
 def main():
@@ -47,7 +53,8 @@ def main():
         st.session_state.ranking_list = [[["India"], ["Fashion Hub"], ["Mumbai"], ["indian fashion"]], [["China"], ["Fashion Hub"], ["Shanghai"], ["chinese fashion"]],  [["Australia"], ["Fashion Destination"], ["Sydney"], ["australian fashion"]], [["Germany"], ["Fashion Pioneer"], ["Berlin"], ["german fashion"]], [["Spain"], ["Fashion Icon"], ["Madrid"], ["spanish fashion"]],   [
             ["United States"], ["Fashion Influencer"], ["New York"], ["american fashion"]], [["Japan"], ["Fashion Innovator"], ["Tokyo"], ["japanese fashion"]], [["United Kingdom"], ["Fashion Trendsetter"], ["London"], ["british fashion"]], [["Italy"], ["Fashion Leader"], ["Milan"], ["italian fashion"]],  [["France"], ["Fashion Capital"], ["Paris"], ["french fashion"]]]
     if 'title' not in st.session_state:
-        st.session_state.title = 'Top 10: ' + user_input + st.session_state.channel_category + ' #shorts #fyp '
+        st.session_state.title = 'Top 10: ' + user_input + \
+            st.session_state.channel_category + ' #shorts #fyp '
     if 'description' not in st.session_state:
         st.session_state.description = 'Top 10: ' + user_input + '\n Music: 6th String by Dedpled \n' + \
             '#italy #france #uk #usa #nyc #london #milan #paris #india #mumbai #shangai #sydney #berlin #japan #tokyo #spain #madrid'
@@ -62,23 +69,85 @@ def main():
 
     # Creating chains
     llm = OpenAI(model_name='text-davinci-003', temperature=0.2)
+    llm2 = OpenAI(model_name='text-davinci-002', temperature=0.2)
+
     video_chain4 = LLMChain(llm=llm, prompt=video_template4, verbose=True)
     fact_check_chain = LLMChain(
         llm=llm, prompt=fact_check_template, verbose=True)
-    hashtage_chain = LLMChain(llm=llm, prompt=hashtag_template, verbose=True)
+    hashtage_chain = LLMChain(llm=llm2, prompt=hashtag_template, verbose=True)
 
     openai_button = st.button("Make OpenAI Call")  # OpenAI Call Button
     user_entered_response = ""
+    if 'media_file_paths' not in st.session_state:
+        st.session_state.media_file_paths = []
+    if 'queries' not in st.session_state:
+        st.session_state.queries = []
+
+
     with st.expander('Advanced OpenAI Settings'):
         # OpenAI Call Bypass Radio Button
         openai_bypass = st.radio('Bypass OpenAI Call?', ('No', 'Yes'))
+        reverse_button = st.button("Reverse Response")
+        switch_button = st.button("Switch Response")
+
+        if reverse_button:
+            reversed_response = reverse_response(st.session_state.ranking_list)
+            st.session_state.ranking_list = reversed_response
+        
+        if switch_button:
+            switched_response = switch_response(st.session_state.ranking_list)
+            st.session_state.ranking_list = switched_response
+
         user_entered_response = st.text_area(
             "Enter your own response", st.session_state.ranking_list)
+        if user_entered_response:
+            st.session_state.ranking_list = convert_openai_response(user_entered_response)
+
         submit_button = st.button("Submit Response")
         if submit_button:
-            st.session_state.ranking_list = convert_openai_response(
-                user_entered_response)
+            st.session_state.media_file_paths.clear()  # Clear existing paths
+            st.session_state.queries.clear()  # Clear existing queries
+            st.session_state.ranking_list = convert_openai_response(st.session_state.ranking_list)
             print('Ranking_List:', st.session_state.ranking_list)
+            j = 0
+            for i in range(min(10, len(st.session_state.ranking_list)), 0, -1):
+                try:
+                    media_queries = [
+                        f"{st.session_state.ranking_list[j][3][0]}"]
+                    media_queries.append(
+                        f"{st.session_state.ranking_list[j][0][0]} + 'flag'")
+                    for media_query in media_queries:
+                        st.session_state.queries.append(media_query)
+                        media_results = google_search.search_media(
+                            media_query, num_results=3)
+                        # pic from top 3 results
+                        media_file_path = f"media_{j}_{media_queries.index(media_query)}.jpg"
+                        image_downloaded = False
+                        for media in media_results[:3]:
+                            media_url = media["link"]
+                            try:
+                                if not image_downloaded:
+                                    image_downloaded = download_image(
+                                        media_url, media_file_path)
+                                    # Check if the image is readable
+                                    if image_downloaded and is_image_readable(media_file_path):
+                                        break
+                            except Exception as e:
+                                print(
+                                    f"Error occurred while downloading or reading the image: {e}")
+                                raise e
+                        if not image_downloaded:
+                            media_file_path = None  # Skip using the image if the download fails
+                        st.session_state.media_file_paths.append(media_file_path)
+                except Exception as e:
+                    print(
+                        f"Error occurred while processing the media queries: {e}")
+                    raise e
+                j += 1
+        cols = generate_columns_layout(st.session_state.media_file_paths, st.session_state.queries)
+    for row in cols:
+        for column in row:
+            column.write("")  # Add empty write statements to preserve the layout
 
     # Initialize the session state
     if 'generate_video' not in st.session_state:
@@ -126,11 +195,44 @@ def main():
                     st.error(
                         f'Error occurred while parsing user entered response: {e}')
         st.experimental_rerun()
-
     with st.expander("Advanced Generate Video Settings"):
         include_flag = st.radio('Include Country flag?', ('No', 'Yes'))
-        title_media_query = st.text_input(
-            'Input Thumbnail Search Query', user_input)
+        title_media_query = st.text_input('Input Thumbnail Search Query')
+
+        # The user's input is now in title_media_query
+        title_media_query = [title_media_query]
+
+        # Perform Google search
+        try:
+            title_media_results = google_search.search_media(
+                title_media_query, num_results=3)
+        except Exception as e:
+            st.write(f"Error occurred while using Google Search API: {e}")
+            raise e
+
+        # Download and check image from top 3 results
+        title_media_file_path = f"media_title.jpg"
+        image_downloaded = False
+        for media in title_media_results[:3]:
+            media_url = media["link"]
+            try:
+                if not image_downloaded:
+                    image_downloaded = download_image(
+                        media_url, title_media_file_path)
+                    # Check if the image is readable
+                    if image_downloaded and is_image_readable(title_media_file_path):
+                        break
+            except Exception as e:
+                st.write(
+                    f"Error occurred while downloading or reading the image: {e}")
+                raise e
+
+        # Display image to the user
+        if image_downloaded:
+            image = Image.open(title_media_file_path)
+            st.image(image, caption=title_media_query)
+        else:
+            st.write("No valid image found.")
 
     if generate_video_button:
         if user_input.strip() == '':
@@ -139,25 +241,9 @@ def main():
             with st.spinner("Generating video...\n this might take a minute!"):
 
                 st.session_state.generate_video = False
-
-                ranking_frame_videos = []
-                # title_bg = (get_video_from_pexels(user_input))
-                title_bg = get_title_bg2()
-                if title_bg is not None:
-                    download_video(title_bg, f'ranking_frame_0.mp4')
-                    ranking_frame_videos.append(f'ranking_frame_0.mp4')
-
-                for j in range(len(st.session_state.ranking_list)):
-                    element_name = st.session_state.ranking_list[j][0][0]
-                    video = get_video_from_pexels(element_name)
-                    if video is not None:
-                        download_video(video, f'ranking_frame_{j+1}.mp4')
-                        ranking_frame_videos.append(f'ranking_frame_{j+1}.mp4')
-
                 if isinstance(st.session_state.ranking_list, list):
                     try:
-                        bg_videos = [VideoFileClip(path)
-                                     for path in ranking_frame_videos]
+                        bg_videos = get_ranking_frame_videos()
                     except Exception as e:
                         st.error(
                             f'Error occurred while creating video clips: {e}')
@@ -168,31 +254,33 @@ def main():
 
                         # This line creates the video using the ranking list.
                         try:
-                            create_video(st.session_state.ranking_list,
-                                         user_input, include_flag, bg_videos=bg_videos, bg_music=bg_music, title_media_query=title_media_query)
+                            create_country_video(st.session_state.ranking_list,
+                                                 user_input, include_flag, bg_videos=bg_videos, bg_music=bg_music, title_media_query=title_media_query)
                         except Exception as e:
                             st.error(
                                 f'Error occurred while generating video: {e}')
 
-                    for video_clip in bg_videos:  # Close video clips before deleting the temporary files
-                        video_clip.close()
+                    # for video_clip in bg_videos:  # Close video clips before deleting the temporary files
+                    #     video_clip.close()
 
-                    for video_path in ranking_frame_videos:  # Remove the video files
-                        if os.path.exists(video_path):
-                            os.remove(video_path)
+                    # for video_path in ranking_frame_videos:  # Remove the video files
+                    #     if os.path.exists(video_path):
+                    #         os.remove(video_path)
 
                     if uploaded_bg_music is not None:
                         os.remove(bg_music)
         else:
             st.error(
                 'Error: No JSON object to make a video out of. Click "Make OpenAICall" before this button.\
-                    \nOr by pass it in advanced settings')
+                    \nOr by pass it in advanced settings')  
+        for row in cols:
+            for column in row:
+                column.write("")  # Add empty write statements to preserve the layout
 
     if authenticate_button:
         st.session_state.youtube = authenticate_youtube(channel_choice)
         st.session_state.channel_category = get_channel_category(
             channel_choice)
-    upload_video_button = st.button("Upload to YouTube")
     tags = []
     if user_input.strip() == '':
         st.error(
@@ -200,24 +288,31 @@ def main():
     else:
         each_word = user_input.split()
         st.session_state.title = 'Top 10: ' + user_input + \
-            st.session_state.channel_category + '#shorts #fyp'
+            st.session_state.channel_category + ' #shorts #fyp '
         # st.session_state.description = 'Top 10: ' + user_input + '\n Music: 6th String by Dedpled \n' + \
         #     '#fashion #italy #france #uk #usa #nyc #london #milan #paris #india #mumbai #shangai #sydney #berlin #japan #tokyo #spain #madrid'
 
     with st.expander('Advanced Youtube Settings') as adv_yt:
-        st.session_state.title = st.text_input('Title:', st.session_state.title)
-        st.session_state.description = st.text_area('Description:', st.session_state.description)
+        st.session_state.title = st.text_input(
+            'Title:', st.session_state.title)
+        st.session_state.description = st.text_area(
+            'Description:', st.session_state.description)
     # if upload_video_button:
     if os.path.exists("ranking_video.mp4"):
         st.video("ranking_video.mp4")
 
-    if st.button("Confirm Upload"):
+    if st.button("Upload to YouTube"):
         if 'youtube' not in st.session_state:
             st.error("You must authenticate YouTube before uploading.")
         else:
             st.write(f'Uploading video with title: "{st.session_state.title}"')
+            csv_path = r'C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\src\\files\\schedule.csv'
+            last_upload_time = get_last_upload_time(csv_path)
+            next_slot = get_next_available_slot(last_upload_time)
+            print('Next available slot is:', next_slot)
             response = upload_video(
-                st.session_state.youtube, "ranking_video.mp4", st.session_state.title, st.session_state.description, tags)
+                st.session_state.youtube, "ranking_video.mp4", st.session_state.title, st.session_state.description, tags, next_slot)
+            write_schedule_to_csv(next_slot, st.session_state.title, csv_path)
             st.write("Video uploaded, video id is: ", response['id'])
 
 
