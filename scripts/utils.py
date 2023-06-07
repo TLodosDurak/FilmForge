@@ -186,12 +186,16 @@ def set_duration_crop_video(file_path, output_file_path, duration=5, new_resolut
     resized_clip.close()
 
 
-def delete_media_files(num_i, num_j) -> None:
+def delete_media_files(num_i, num_j, thread_id) -> None:
     for i in range(num_i):
         for j in range(num_j):
-            file_path = f"media_{i}_{j}.jpg"
+            file_path = f"C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\temp\\media_{thread_id}_{i}_{j}.jpg"
             if os.path.exists(file_path):
                 os.remove(file_path)
+
+    title_file_path = f"C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\temp\\media_title_{thread_id}.jpg"
+    if os.path.exists(title_file_path):
+        os.remove(title_file_path)
 
 
 def save_uploaded_file(uploaded_file):
@@ -257,16 +261,14 @@ def generate_columns_layout(media_file_paths, queries):
     current_row = 0
     current_col = 0
     for media_file_path, query in zip(media_file_paths, queries):
-        if media_file_path is not None:
+        if os.path.exists(media_file_path):  # If the file exists
             image = Image.open(media_file_path)
-            cols[current_row][current_col].image(
-                image, width=100)  # set width to resize the image
-            cols[current_row][current_col].write(
-                query)  # write the query under the image
-            current_col += 1  # move to the next column
-            if current_col >= 4:  # if we have filled all columns in the current row
-                current_row += 1  # move to the next row
-                current_col = 0  # reset to the first column in the new row
+            cols[current_row][current_col].image(image, width=100)  # set width to resize the image
+        cols[current_row][current_col].write(query)  # write the query under the image or alone
+        current_col += 1  # move to the next column
+        if current_col >= 4:  # if we have filled all columns in the current row
+            current_row += 1  # move to the next row
+            current_col = 0  # reset to the first column in the new row
 
     return cols
 

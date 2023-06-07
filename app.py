@@ -20,6 +20,13 @@ from src.audio import *
 from src.videos import *
 from src.videos.default_pexel_bg import get_ranking_frame_videos
 from PIL import Image
+import queue
+import threading
+import time
+import uuid
+
+
+
 
 
 # Necessary if using Windows
@@ -27,6 +34,30 @@ change_settings(
     {"IMAGEMAGICK_BINARY": r"C:\Program Files\ImageMagick-7.1.1-Q16-HDRI\magick.exe"})
 
 google_search = CustomGoogleSearchAPIWrapper()
+video_queue = queue.Queue()
+
+
+def worker(thread_id):
+    while True:
+        video_data = video_queue.get()
+        if video_data is None:
+            break
+        create_country_video(
+            video_data["ranking_list"],
+            video_data["user_input"],
+            video_data["include_flag"],
+            bg_videos=video_data["bg_videos"],
+            bg_music=video_data["bg_music"],
+            thread_id=thread_id
+        )
+        video_queue.task_done()
+
+threads = []
+num_worker_threads = 4
+for i in range(num_worker_threads):
+    t = threading.Thread(target=worker, args=(str(uuid.uuid4()),))
+    t.start()
+    threads.append(t)
 
 
 def main():
@@ -53,8 +84,7 @@ def main():
         st.session_state.ranking_list = [[["India"], ["Fashion Hub"], ["Mumbai"], ["indian fashion"]], [["China"], ["Fashion Hub"], ["Shanghai"], ["chinese fashion"]],  [["Australia"], ["Fashion Destination"], ["Sydney"], ["australian fashion"]], [["Germany"], ["Fashion Pioneer"], ["Berlin"], ["german fashion"]], [["Spain"], ["Fashion Icon"], ["Madrid"], ["spanish fashion"]],   [
             ["United States"], ["Fashion Influencer"], ["New York"], ["american fashion"]], [["Japan"], ["Fashion Innovator"], ["Tokyo"], ["japanese fashion"]], [["United Kingdom"], ["Fashion Trendsetter"], ["London"], ["british fashion"]], [["Italy"], ["Fashion Leader"], ["Milan"], ["italian fashion"]],  [["France"], ["Fashion Capital"], ["Paris"], ["french fashion"]]]
     if 'title' not in st.session_state:
-        st.session_state.title = 'Top 10: ' + user_input + \
-            st.session_state.channel_category + ' #shorts #fyp '
+        st.session_state.title = user_input + st.session_state.channel_category + ' #shorts '
     if 'description' not in st.session_state:
         st.session_state.description = 'Top 10: ' + user_input + '\n Music: 6th String by Dedpled \n' + \
             '#italy #france #uk #usa #nyc #london #milan #paris #india #mumbai #shangai #sydney #berlin #japan #tokyo #spain #madrid'
@@ -119,11 +149,11 @@ def main():
                     for media_query in media_queries:
                         st.session_state.queries.append(media_query)
                         media_results = google_search.search_media(
-                            media_query, num_results=3)
+                            media_query, num_results=5)
                         # pic from top 3 results
-                        media_file_path = f"media_{j}_{media_queries.index(media_query)}.jpg"
+                        media_file_path = f"C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\temp\\media_{j}_{media_queries.index(media_query)}.jpg"
                         image_downloaded = False
-                        for media in media_results[:3]:
+                        for media in media_results[:5]:
                             media_url = media["link"]
                             try:
                                 if not image_downloaded:
@@ -211,7 +241,7 @@ def main():
             raise e
 
         # Download and check image from top 3 results
-        title_media_file_path = f"media_title.jpg"
+        title_media_file_path = f"C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\temp\\media_title.jpg"
         image_downloaded = False
         for media in title_media_results[:3]:
             media_url = media["link"]
@@ -239,7 +269,6 @@ def main():
             st.error('Error: Input field is empty. Please enter a topic.')
         elif (st.session_state.get('generate_video') and user_input) or openai_bypass == 'Yes':
             with st.spinner("Generating video...\n this might take a minute!"):
-
                 st.session_state.generate_video = False
                 if isinstance(st.session_state.ranking_list, list):
                     try:
@@ -254,8 +283,16 @@ def main():
 
                         # This line creates the video using the ranking list.
                         try:
-                            create_country_video(st.session_state.ranking_list,
-                                                 user_input, include_flag, bg_videos=bg_videos, bg_music=bg_music, title_media_query=title_media_query)
+                            # create_country_video(st.session_state.ranking_list,
+                            #                      user_input, include_flag, bg_videos=bg_videos, bg_music=bg_music)
+                            video_queue.put({
+                                "ranking_list": st.session_state.ranking_list,
+                                "user_input": user_input,
+                                "include_flag": include_flag,
+                                "bg_videos": bg_videos,
+                                "bg_music": bg_music
+                            })
+
                         except Exception as e:
                             st.error(
                                 f'Error occurred while generating video: {e}')
@@ -298,8 +335,9 @@ def main():
         st.session_state.description = st.text_area(
             'Description:', st.session_state.description)
     # if upload_video_button:
-    if os.path.exists("ranking_video.mp4"):
-        st.video("ranking_video.mp4")
+    video_title = f"{'_'.join(user_input.split())}.mp4"
+    if os.path.exists(video_title):
+        st.video(video_title)
 
     if st.button("Upload to YouTube"):
         if 'youtube' not in st.session_state:
@@ -311,7 +349,7 @@ def main():
             next_slot = get_next_available_slot(last_upload_time)
             print('Next available slot is:', next_slot)
             response = upload_video(
-                st.session_state.youtube, "ranking_video.mp4", st.session_state.title, st.session_state.description, tags, next_slot)
+                st.session_state.youtube, video_title, st.session_state.title, st.session_state.description, tags, next_slot)
             write_schedule_to_csv(next_slot, st.session_state.title, csv_path)
             st.write("Video uploaded, video id is: ", response['id'])
 

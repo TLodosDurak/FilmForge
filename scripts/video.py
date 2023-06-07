@@ -7,6 +7,7 @@ from scripts.utils import *
 from moviepy.video.fx.all import margin, resize, crop
 import cv2
 import numpy as np
+import os
 
 
 def convert_frame_to_rgb(frame):
@@ -163,7 +164,7 @@ def create_counrty_ranking_frame(rank, country, why, what, duration=2.80, bg_vid
     return clip
 
 
-def create_country_video(ranking_list, topic, include_flag, include_bg_videos=True, elements='Countries', bg_videos=None, bg_music=None, title_media_query='usa flag'):
+def create_country_video(ranking_list, topic, include_flag, thread_id, include_bg_videos=True, elements='Countries', bg_videos=None, bg_music=None):
     clips = []
     j = 0
     # Title card
@@ -174,11 +175,13 @@ def create_country_video(ranking_list, topic, include_flag, include_bg_videos=Tr
     else:
         bg_video = None
 
-    title_media_file_path = f"media_title.jpg"
+    title_media_file_path = f"C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\temp\\media_title.jpg"
+    new_title_media_file_path = f"C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\temp\\media_title_{thread_id}.jpg"
+    os.rename(title_media_file_path, new_title_media_file_path)
 
     try:
         title_card = create_title_card_variant0(
-            title_element, title_topic, bg_video=bg_video, title_media_file_path=title_media_file_path)
+            title_element, title_topic, bg_video=bg_video, title_media_file_path=new_title_media_file_path)
         if title_card is not None:
             clips.append(title_card)
     except Exception as e:
@@ -191,16 +194,28 @@ def create_country_video(ranking_list, topic, include_flag, include_bg_videos=Tr
         try:
             media_file_paths = []
             if include_flag == 'Yes':
-                media_file_path0 = f"media_{j}_0.jpg"
-                media_file_path1 = f"media_{j}_1.jpg"
-                media_file_paths.append(media_file_path0)
-                media_file_paths.append(media_file_path1)
+                media_file_path0 = f"C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\temp\\media_{j}_0.jpg"
+                media_file_path1 = f"C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\temp\\media_{j}_1.jpg"
+
+                # Rename the media files using os.rename
+                new_media_file_path0 = f"C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\temp\\media_{thread_id}_{j}_0.jpg"
+                new_media_file_path1 = f"C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\temp\\media_{thread_id}_{j}_1.jpg"
+                
+                os.rename(media_file_path0, new_media_file_path0)
+                os.rename(media_file_path1, new_media_file_path1)
+
+                media_file_paths.append(new_media_file_path0)
+                media_file_paths.append(new_media_file_path1)
             else:
-                media_file_path0 = f"media_{j}_0.jpg"
-                media_file_paths.append(media_file_path0)
+                media_file_path0 = f"C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\temp\\media_{j}_0.jpg"
+                
+                # Rename the media file using os.rename
+                new_media_file_path0 = f"C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\temp\\media_{thread_id}_{j}_0.jpg"
+                os.rename(media_file_path0, new_media_file_path0)
+
+                media_file_paths.append(new_media_file_path0)
         except Exception as e:
-            print(
-                f"Error occurred while processing the media queries: {e}")
+            print(f"Error occurred while processing the media queries: {e}")
             raise e
 
         try:
@@ -234,12 +249,15 @@ def create_country_video(ranking_list, topic, include_flag, include_bg_videos=Tr
             audio = audio.set_duration(final_video.duration)
             final_video = final_video.set_audio(audio)
             final_video.write_videofile(
-                "ranking_video.mp4", fps=24, codec='libx264')
+                f"{'_'.join(topic.split())}.mp4", fps=24, codec='libx264')
             audio.close()  # Close the AudioFileClip before deleting the temporary file
         else:
             final_video.write_videofile(
-                "ranking_video.mp4", fps=24, codec='libx264')
+                f"{'_'.join(topic.split())}.mp4", fps=24, codec='libx264')
     except Exception as e:
         print(
             f"Error occurred while processing the final video or writing it to a file: {e}")
         raise e
+    finally:
+        delete_media_files(min(10, len(ranking_list)), 2 if include_flag == 'Yes' else 1, thread_id)
+
