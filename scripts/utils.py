@@ -7,14 +7,16 @@ import dotenv
 from moviepy.video.fx.all import crop
 from moviepy.editor import VideoFileClip
 import random
-from src.videos.default_pexel_bg import get_default_bg
+#from src.videos.default_pexel_bg import get_default_bg
 from moviepy.video.fx import fadein
 from moviepy.editor import concatenate_videoclips
 import numpy as np
 from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
-from src.audio import *
+#from src.audio import *
 import streamlit as st
 import ast
+import textwrap
+
 
 
 def shake(clip, amplitude=10):
@@ -46,6 +48,22 @@ def get_hashtags_list(ranking_list):
     hashtags_formatted_string = ', '.join(hashtags_unformatted_list)
     return hashtags_formatted_string
 
+def font_size(base_font, word_count):
+    base_font_size = base_font
+    min_font_size = 100
+    max_word_count = 6  # adjust this as per your requirement
+
+    if word_count > max_word_count:
+        return min_font_size
+    else:
+        font_size = base_font_size - ((word_count-1) / (max_word_count-1)) * (base_font_size - min_font_size)
+        return int(font_size)
+
+
+def wrap_text(text, max_width):
+    wrapper = textwrap.TextWrapper(width=max_width)
+    word_list = wrapper.wrap(text)
+    return '\n'.join(word_list)
 
 def get_item_hashtags_list(ranking_list):
     hashtags_unformatted_list = []
@@ -60,7 +78,7 @@ def download_image(url: str, file_path: str) -> bool:
         response = requests.get(url)
         if response.status_code == 200:
             content_type = response.headers.get("Content-Type")
-            # Check if content type is an image and its size is more than 1KB
+            # Check if content type is an image and its size more than 1KB
             if content_type and "image" in content_type and len(response.content) > 1024:
                 with open(file_path, "wb") as file:
                     file.write(response.content)
@@ -102,7 +120,7 @@ def is_image_readable(file_path: str) -> bool:
         with Image.open(file_path) as img:
             img.verify()  # This will raise an exception if the image is not readable
         return True
-    except Exception as e:
+    except (IOError, SyntaxError) as e:  # More specific exceptions
         print(f"Error reading image: {e}")
         return False
 
@@ -112,27 +130,28 @@ pexels_api_key = os.environ['PEXELS_API_KEY']
 
 
 def get_video_from_pexels(query):
-    url = f"https://api.pexels.com/videos/search?query={query}&per_page=1"
-    headers = {
-        'Authorization': pexels_api_key
-    }
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        data = json.loads(response.text)
-        if len(data['videos']) > 0 and len(data['videos'][0]['video_files']) > 0:
-            # Sort the video files by quality, width and height in descending order
-            sorted_files = sorted(data['videos'][0]['video_files'],
-                                  key=lambda x: (
-                                      x['quality'], x['width'], x['height']),
-                                  reverse=True)
-            # Return the link of the highest quality video
-            return sorted_files[0]['link']
-        else:
-            print('No video found on Pexels for the query:', query)
-            return get_default_bg()
-    else:
-        print('Failed to get video from Pexels', response.status_code)
-        return get_default_bg()
+    pass
+#     url = f"https://api.pexels.com/videos/search?query={query}&per_page=1"
+#     headers = {
+#         'Authorization': pexels_api_key
+#     }
+#     response = requests.get(url, headers=headers)
+#     if response.status_code == 200:
+#         data = json.loads(response.text)
+#         if len(data['videos']) > 0 and len(data['videos'][0]['video_files']) > 0:
+#             # Sort the video files by quality, width and height in descending order
+#             sorted_files = sorted(data['videos'][0]['video_files'],
+#                                   key=lambda x: (
+#                                       x['quality'], x['width'], x['height']),
+#                                   reverse=True)
+#             # Return the link of the highest quality video
+#             return sorted_files[0]['link']
+#         else:
+#             print('No video found on Pexels for the query:', query)
+#             return get_default_bg()
+#     else:
+#         print('Failed to get video from Pexels', response.status_code)
+#         return get_default_bg()
 
 
 def download_video(url, filename):
@@ -239,13 +258,14 @@ def convert_openai_response(response):
             ranking_list = json.loads(response)
         else:
             ranking_list = response  # response is already a list
-        return ranking_list
+        return ranking_list, None
     except json.JSONDecodeError as e:
         print(f"Error: {e}")  # Print the error for debugging
-        return "Error: Response is not in valid JSON format."
+        return response, "Error: Response is not in valid JSON format."
+
     except ValueError as e:
         print(f"Error: {e}")
-        return "Error: Empty response received."
+        return response, "Empty response received."
 
 
 def generate_columns_layout(media_file_paths, queries):
@@ -310,17 +330,58 @@ def switch_response(response_str):
         return list_response  # Return the original string in case of an error
     return list_response
 
+from gtts import gTTS
+
+def speak_text(text):
+    tts = gTTS(text=text, lang='en') # Change 'en' to the desired language if necessary.
+    tts.save("output.mp3") 
+    os.system("start output.mp3") # Use an audio player that suits your environment. `mpg123` is for Unix-based systems.
+
+
+import azure.cognitiveservices.speech as speechsdk
+azure_api_key = os.environ['AZURE_API_KEY']
+def azure_speak_text(text, output_filename):
+    # Replace with your own subscription key and region identifier from Azure.
+    speech_key, service_region = azure_api_key, "eastus"
+    speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=service_region)
+
+    # Set the speech synthesis output format.
+    speech_config.set_speech_synthesis_output_format(speechsdk.SpeechSynthesisOutputFormat.Riff24Khz16BitMonoPcm)
+
+    # Choose the neural voice. You can change to other neural voices available.
+    speech_config.speech_synthesis_voice_name = "en-US-GuyNeural"
+
+    # Create a speech synthesizer using the configured voice for your language.
+    speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config)
+
+    # Synthesize the text.
+    result = speech_synthesizer.speak_text_async(text).get()
+
+    # Check the result.
+    if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
+        print("Speech synthesized for text [", text, "]")
+        # Save the synthesized speech to a .mp3 file
+        with open(output_filename, "wb") as audio_file:
+            audio_file.write(result.audio_data)
+    elif result.reason == speechsdk.ResultReason.Canceled:
+        cancellation_details = result.cancellation_details
+        print("Speech synthesis canceled: {}".format(cancellation_details.reason))
+        if cancellation_details.reason == speechsdk.CancellationReason.Error:
+            print("Error details: {}".format(cancellation_details.error_details))
 
 def pick_default_audio_path():
     # audio file paths
-    blast = r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\01_blast.mp3'
-    passion = r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\02_passion.mp3'
-    mazaphonk = r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\03_mazaphonk.mp3'
-    phonkhouse = r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\04_phonkhouse.mp3'
-    string6th = r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\05_6thstring.mp3'
-    perfect = r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\06_perfect.mp3'
-    isolation = r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\07_isolate.mp3'
-    audio_list = [blast, passion, mazaphonk,
-                  phonkhouse, string6th, perfect, isolation]
-    # return random.choice(audio_list)
-    return string6th
+    blast = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\01_blast.mp3', 4.85, 1.95]
+    passion = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\02_passion.mp3', 7.3, 2.5]
+    mazaphonk = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\03_mazaphonk.mp3', 4.85, 2.0]
+    #phonkhouse = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\04_phonkhouse.mp3', 0, 0]
+    string6th = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\05_6thstring.mp3', 3.9, 2.8]
+    perfect = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\06_perfect.mp3', 5.0, 2.33]
+    isolation = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\07_isolate.mp3', 5.35, 2.3]
+    audio_list = [blast, passion, mazaphonk, perfect, isolation]
+    return random.choice(audio_list)
+
+if __name__ == '__main__':
+    #speak_text("Countries with Least Allies")
+    azure_speak_text("#9 Turkey")
+

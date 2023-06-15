@@ -3,6 +3,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+from google.auth.exceptions import RefreshError
 import os
 
 
@@ -25,25 +26,35 @@ def authenticate_youtube(channel_choice):
     elif channel_choice == '🔴Top10AnythingAndMore':
         CLIENT_SECRET_FILE = os.environ['CLIENT_SECRET_FILE1']
         TOKEN_FILE = 'token_channel1.pickle'
+    elif channel_choice == '🟢HistoryTop10s':
+        CLIENT_SECRET_FILE = os.environ['CLIENT_SECRET_FILE2']
+        TOKEN_FILE = 'token_channel2.pickle'
+    elif channel_choice == '🟣EverythinNature':
+        CLIENT_SECRET_FILE = os.environ['CLIENT_SECRET_FILE3']
+        TOKEN_FILE = 'token_channel3.pickle'
     else:
         raise ValueError(f"Unexpected channel choice: {channel_choice}")
 
-    creds = None
     # The file TOKEN_FILE stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
     # time.
+    creds = None
     if os.path.exists(TOKEN_FILE):
         with open(TOKEN_FILE, 'rb') as token:
             creds = pickle.load(token)
-    # If there are no (valid) credentials available, let the user log in.
+
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                CLIENT_SECRET_FILE, SCOPES)
-            creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
+            try:
+                creds.refresh(Request())
+            except RefreshError:  # handle failed refresh
+                os.remove(TOKEN_FILE)
+                creds = None
+
+    if not creds:  # either not loaded or failed to refresh
+        flow = InstalledAppFlow.from_client_secrets_file(
+            CLIENT_SECRET_FILE, SCOPES)
+        creds = flow.run_local_server(port=0)
         with open(TOKEN_FILE, 'wb') as token:
             pickle.dump(creds, token)
 
@@ -51,9 +62,13 @@ def authenticate_youtube(channel_choice):
 
 def get_channel_category(channel_choice):
     if channel_choice == '🟡top10countryrankings':
-        return '#top10'
+        return ' '
     elif channel_choice == '🔴Top10AnythingAndMore':
-        return '#anythingtop10'
+        return ' '
+    elif channel_choice == '🟢HistoryTop10s':
+        return ' #history'
+    elif channel_choice == '🟣EverythinNature':
+        return ' #nature'
     else:
         raise ValueError(f"Unexpected channel choice: {channel_choice}")
 
@@ -65,12 +80,17 @@ import pytz
 
 
 def get_next_available_slot(last_upload_time):
-    next_1_pm = datetime.combine(last_upload_time.date(), time(13))  # next 1 PM
-    next_9_pm = datetime.combine(last_upload_time.date(), time(21))  # next 9 PM
+    now = datetime.now()
 
-    if last_upload_time < next_1_pm:
+    # if the current time is ahead of the last_upload_time, use the current time
+    reference_time = now if now > last_upload_time else last_upload_time
+
+    next_1_pm = datetime.combine(reference_time.date(), time(13))  # next 1 PM
+    next_9_pm = datetime.combine(reference_time.date(), time(21))  # next 9 PM
+
+    if reference_time < next_1_pm:
         return next_1_pm
-    elif last_upload_time < next_9_pm:
+    elif reference_time < next_9_pm:
         return next_9_pm
     else:
         # If it's already past 9 PM, schedule for 1 PM the next day
@@ -130,10 +150,21 @@ def upload_video(youtube, filename, title, description, tags, publish_time):
     response = request.execute()
     return response
 
+def get_schedule_path(channel_choice):
+    if channel_choice == '🟡top10countryrankings':
+        return r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\files\top10countryrankings_schedule.csv'
+    elif channel_choice == '🔴Top10AnythingAndMore':
+        return r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\files\Top10AnythingAndMore_schedule.csv'
+    elif channel_choice == '🟢HistoryTop10s':
+        return r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\files\HistoryTop10s_schedule.csv'
+    elif channel_choice == '🟣EverythinNature':
+        return r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\files\EverythingNature_schedule.csv'
+    else:
+        raise ValueError(f"Unexpected channel choice: {channel_choice}")
 
 
-csv_path = r'C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\src\\files\\schedule.csv'
-
+csv_path = r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\files\test_schedule.csv'
+import streamlit as st
 if __name__ == '__main__':
     last_upload_time = get_last_upload_time(csv_path)
     next_slot = get_next_available_slot(last_upload_time)
