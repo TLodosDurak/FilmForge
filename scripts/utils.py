@@ -18,40 +18,34 @@ import ast
 import textwrap
 
 
-
-def shake(clip, amplitude=10):
-    """ Returns a clip with a shaking effect """
-
-    def shaking(t):
-        h, w = clip.size
-        tx = amplitude * (np.random.random() - 0.5)
-        ty = amplitude * (np.random.random() - 0.5)
-        return "center" + int(max(h, w)*tx), "center" + int(max(h, w)*ty)
-
-    return clip.set_position(shaking)
-
-
-def apply_shake_for_duration(clip, duration, amplitude=10):
-    shaking_part = shake(clip.subclip(0, duration), amplitude)
-    remaining_part = clip.subclip(duration)
-    return concatenate_videoclips([shaking_part, remaining_part])
-
-
 def fadein_clip(clip, duration):
     return clip.fx(fadein, duration)
 
 
 def get_hashtags_list(ranking_list):
-    hashtags_unformatted_list = []
+    # Initialize an empty list to store the hashtags
+    hashtags = []
+
+    # Loop through each element of the ranking_list
     for rank in ranking_list:
-        hashtags_unformatted_list.append(f'{rank[0][0]}, {rank[2][0]}')
-    hashtags_formatted_string = ', '.join(hashtags_unformatted_list)
-    return hashtags_formatted_string
+        # Take the name from rank[0][0]
+        name = rank[0][0]
+        # Replace spaces with no space and convert to lowercase
+        name = name.replace(" ", "").lower()
+        # Add hashtag at the start
+        hashtag = "#" + name
+        # Add the hashtag to the list
+        hashtags.append(hashtag)
+
+    # Convert the list of hashtags into a single string
+    hashtags_string = " ".join(hashtags)
+
+    return hashtags_string
 
 def font_size(base_font, word_count):
     base_font_size = base_font
     min_font_size = 100
-    max_word_count = 6  # adjust this as per your requirement
+    max_word_count = 8  # adjust this as per your requirement
 
     if word_count > max_word_count:
         return min_font_size
@@ -88,21 +82,6 @@ def download_image(url: str, file_path: str) -> bool:
                     # If the image mode is not 'RGB', convert it
                     if img.mode != 'RGB':
                         img = img.convert('RGB')
-
-                    # Check original image dimensions
-                    width, height = img.size
-                    # If either dimension is too large, resize the image
-                    if width > 500 or height > 300:
-                        # Compute the new dimensions while maintaining aspect ratio
-                        aspect_ratio = width / height
-                        if width > 500:
-                            width = 500
-                            height = int(width / aspect_ratio)
-                        if height > 300:
-                            height = 300
-                            width = int(height * aspect_ratio)
-                        # Resize the image and save it
-                        img = img.resize((width, height), Image.ANTIALIAS)
                         img.save(file_path)
 
                 return True
@@ -373,7 +352,7 @@ def pick_default_audio_path():
     # audio file paths
     blast = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\01_blast.mp3', 4.85, 1.95]
     passion = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\02_passion.mp3', 7.3, 2.5]
-    mazaphonk = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\03_mazaphonk.mp3', 4.85, 2.0]
+    mazaphonk = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\03_mazaphonk.mp3', 4.75, 2.0]
     #phonkhouse = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\04_phonkhouse.mp3', 0, 0]
     string6th = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\05_6thstring.mp3', 3.9, 2.8]
     perfect = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\06_perfect.mp3', 5.0, 2.33]

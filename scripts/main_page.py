@@ -90,7 +90,7 @@ def page1(video_queue):
                 media_queries = [
                     f"{st.session_state.ranking_list[j][3][0]}"]
                 media_queries.append(
-                    f"{st.session_state.ranking_list[j][0][0]} + 'flag'")
+                    f"{st.session_state.ranking_list[j][0][0]} + 'offical flag'")
                 for media_query in media_queries:
                     st.session_state.queries.append(media_query)
                     media_results = google_search.search_media(
@@ -141,8 +141,9 @@ def page1(video_queue):
                     # hashtag_response = hashtage_chain.run(
                     #     {"list": get_hashtags_list(st.session_state.ranking_list)})
                     # print(hashtag_response)
+                    hashtag_response = get_hashtags_list(st.session_state.ranking_list)
                     st.session_state.description = 'Top 10: ' +  st.session_state.user_input + \
-                        '\n\n #shorts #countries #countryfacts'# + hashtag_response
+                        '\n\n#shorts #countries #countryfacts ' + hashtag_response
 
                 except Exception as e:
                     print(f'Error occurred while calling OpenAI API: {e}')
@@ -229,8 +230,9 @@ def page1(video_queue):
     if description_button:
         # hashtag_response = hashtage_chain.run(
         #                 {"list": get_hashtags_list(st.session_state.ranking_list)})
+        hashtag_response = get_hashtags_list(st.session_state.ranking_list)
         st.session_state.description = 'Top 10: ' +  st.session_state.user_input + \
-                        '\n\n #shorts #countries #countryfacts'# + hashtag_response
+                        '\n\n#shorts #countries #countryfacts ' + hashtag_response
         st.experimental_rerun()
         
         
@@ -307,7 +309,7 @@ def page1(video_queue):
                                     
                                     writer.writerow({'title': title_part2, 'description': desc_part2})
                             else:
-                                yt_desc_path = r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\generated_videos'+ f"\\{'_'.join(st.session_state.user_input.split())}.csv"
+                                yt_desc_path = r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\generated_videos'+ f"\\{'_'.join(st.session_state.user_input.split())}_part1.csv"
                                 with open(yt_desc_path, 'w', newline='') as csvfile:
                                     fieldnames = ['title', 'description']
                                     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
