@@ -83,7 +83,7 @@ def create_title_card_variant0(title_element, title_topic, duration=3.90, bg_vid
 
 
     # title_media_file_path = None
-    if len(title_media_file_paths) is not None:
+    if title_media_file_paths is not None:
         media_clip = ImageClip(title_media_file_paths).set_duration(duration)
         # Resize the media clip as needed
         media_clip = media_clip.resize(height=580, width=1000)
