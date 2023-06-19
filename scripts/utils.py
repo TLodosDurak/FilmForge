@@ -16,6 +16,7 @@ from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
 import streamlit as st
 import ast
 import textwrap
+import math
 
 
 def fadein_clip(clip, duration):
@@ -67,9 +68,9 @@ def get_item_hashtags_list(ranking_list):
     return hashtags_formatted_string
 
 
-def download_image(url: str, file_path: str) -> bool:
+def download_image(url, file_path):
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=5)  # set timeout to 5 seconds
         if response.status_code == 200:
             content_type = response.headers.get("Content-Type")
             # Check if content type is an image and its size more than 1KB
@@ -89,7 +90,7 @@ def download_image(url: str, file_path: str) -> bool:
                 return False
         else:
             return False
-    except requests.exceptions.RequestException as e:
+    except (requests.exceptions.RequestException, requests.exceptions.Timeout) as e:
         print(f"Error downloading image: {e}")
         return False
 
@@ -319,7 +320,37 @@ def speak_text(text):
 
 import azure.cognitiveservices.speech as speechsdk
 azure_api_key = os.environ['AZURE_API_KEY']
-def azure_speak_text(text, output_filename):
+# def azure_speak_text(text, duration, output_filename):
+#     # Replace with your own subscription key and region identifier from Azure.
+#     speech_key, service_region = azure_api_key, "eastus"
+#     speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=service_region)
+
+#     # Set the speech synthesis output format.
+#     speech_config.set_speech_synthesis_output_format(speechsdk.SpeechSynthesisOutputFormat.Riff24Khz16BitMonoPcm)
+
+#     # Choose the neural voice. You can change to other neural voices available.
+#     speech_config.speech_synthesis_voice_name = "en-US-GuyNeural"
+
+#     # Create a speech synthesizer using the configured voice for your language.
+#     speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config)
+
+#     # Synthesize the text.
+#     result = speech_synthesizer.speak_text_async(text).get()
+
+#     # Check the result.
+#     if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
+#         print("Speech synthesized for text [", text, "]")
+#         # Save the synthesized speech to a .mp3 file
+#         with open(output_filename, "wb") as audio_file:
+#             audio_file.write(result.audio_data)
+#     elif result.reason == speechsdk.ResultReason.Canceled:
+#         cancellation_details = result.cancellation_details
+#         print("Speech synthesis canceled: {}".format(cancellation_details.reason))
+#         if cancellation_details.reason == speechsdk.CancellationReason.Error:
+#             print("Error details: {}".format(cancellation_details.error_details))
+
+
+def azure_speak_text(text, duration, output_filename):
     # Replace with your own subscription key and region identifier from Azure.
     speech_key, service_region = azure_api_key, "eastus"
     speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=service_region)
@@ -333,8 +364,23 @@ def azure_speak_text(text, output_filename):
     # Create a speech synthesizer using the configured voice for your language.
     speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config)
 
+    # time_per_word = (duration*(4/5.0)) / len(text.split(' '))
+    # rate = '%100'
+    # if time_per_word < 1:
+    #     rate = f'%{str(int(math.ceil(100.0 / time_per_word))})'
+    
+    # Define the SSML pattern with the whispering style.
+    ssml_text = """
+    <speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='https://www.w3.org/2001/mstts' xml:lang='en-US'>
+    <voice name='en-US-GuyNeural'>
+    <mstts:express-as style="whispering">{}
+    </mstts:express-as>
+    </voice>
+    </speak>
+    """.format(text)
+
     # Synthesize the text.
-    result = speech_synthesizer.speak_text_async(text).get()
+    result = speech_synthesizer.speak_ssml_async(ssml_text).get()
 
     # Check the result.
     if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
@@ -357,10 +403,10 @@ def pick_default_audio_path():
     string6th = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\05_6thstring.mp3', 3.9, 2.8]
     perfect = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\06_perfect.mp3', 5.0, 2.33]
     isolation = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\07_isolate.mp3', 5.35, 2.3]
-    audio_list = [blast, passion, mazaphonk, perfect, isolation]
+    audio_list = [blast, passion, mazaphonk, string6th, perfect, isolation]
     return random.choice(audio_list)
 
 if __name__ == '__main__':
     #speak_text("Countries with Least Allies")
-    azure_speak_text("#9 Turkey")
+    azure_speak_text("Countries With Toughest Cats", 'test_speech.mp4')
 

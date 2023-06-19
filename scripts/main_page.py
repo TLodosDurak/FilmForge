@@ -90,7 +90,7 @@ def page1(video_queue):
                 media_queries = [
                     f"{st.session_state.ranking_list[j][3][0]}"]
                 media_queries.append(
-                    f"{st.session_state.ranking_list[j][0][0]} + 'offical flag'")
+                    f"{st.session_state.ranking_list[j][0][0]} flag bitmap")
                 for media_query in media_queries:
                     st.session_state.queries.append(media_query)
                     media_results = google_search.search_media(
@@ -209,7 +209,11 @@ def page1(video_queue):
             image = Image.open(title_media_file_path)
             st.image(image, caption=title_media_query)
         else:
-            st.write("No valid image found.")
+            if os.path.isfile(title_media_file_path):
+                image = Image.open(title_media_file_path)
+                st.image(image, caption=title_media_query)
+            else:
+                st.write("No valid image found.")
     
     tags = []
     if  st.session_state.user_input.strip() == '':
@@ -243,6 +247,10 @@ def page1(video_queue):
     generate_video_button = st.button("Generate Video")
 
     if generate_video_button:
+        st.write(f'Generating Video {st.session_state.user_input}...')
+        st.write(f'This will take around 3 minutes, you can check its progress in Schedule Tab.')
+        st.write(f'Feel free to keep generating new videos!')
+        print('Generating Video', st.session_state.user_input)
         if  st.session_state.user_input.strip() == '':
             st.error('Error: Input field is empty. Please enter a topic.')
         elif (st.session_state.get('generate_video') and  st.session_state.user_input) or openai_bypass == 'Yes':
