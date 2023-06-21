@@ -11,6 +11,7 @@ from src.videos.default_pexel_bg import get_ranking_frame_videos
 from PIL import Image
 from scripts.custom_google_search import CustomGoogleSearchAPIWrapper
 import re
+import glob
 
 
 
@@ -173,6 +174,7 @@ def page1(video_queue):
         include_flag = st.radio('Include Country flag?', ('No', 'Yes'))
         two_parts = st.radio('Make it two parts?', ('No', 'Yes'))
         voice_over = st.radio('Have a voice over?', ('No', 'Yes'))
+        custom_thumbnail = st.radio('Have a single custom thumbnail?', ('No', 'Yes'))
 
         title_media_query = st.text_input('Input Thumbnail Search Query')
 
@@ -247,90 +249,94 @@ def page1(video_queue):
     generate_video_button = st.button("Generate Video")
 
     if generate_video_button:
-        st.write(f'Generating Video {st.session_state.user_input}...')
-        st.write(f'This will take around 3 minutes, you can check its progress in Schedule Tab.')
-        st.write(f'Feel free to keep generating new videos!')
         print('Generating Video', st.session_state.user_input)
         if  st.session_state.user_input.strip() == '':
             st.error('Error: Input field is empty. Please enter a topic.')
         elif (st.session_state.get('generate_video') and  st.session_state.user_input) or openai_bypass == 'Yes':
-            with st.spinner("Generating video...\n this might take a minute!"):
-                st.session_state.generate_video = False
-                if isinstance(st.session_state.ranking_list, list):
+            st.write(f'Generating Video {st.session_state.user_input}...')
+            st.write(f'This will take around 3 minutes, you can check its progress in Schedule Tab.')
+            st.write(f'Feel free to keep generating new videos!')
+            #with st.spinner("Generating video...\n this might take a minute!"):
+            st.session_state.generate_video = False
+            if isinstance(st.session_state.ranking_list, list):
+                try:
+                    bg_videos = get_ranking_frame_videos()
+                except Exception as e:
+                    st.error(
+                        f'Error occurred while creating video clips: {e}')
+                audio_info = pick_default_audio_path()
+                default_audio_file_path = audio_info[0]
+                title_duration = audio_info[1]
+                frame_duration = audio_info[2]
+                with open(default_audio_file_path, 'rb') as default_audio_file:
+                    bg_music = default_audio_file.name
+
+                    # This line creates the video using the ranking list.
                     try:
-                        bg_videos = get_ranking_frame_videos()
+                        # create_country_video(st.session_state.ranking_list,
+                        #                      user_input, include_flag, bg_videos=bg_videos, bg_music=bg_music)
+                        video_queue.put({
+                            "ranking_list": st.session_state.ranking_list,
+                            "user_input":  st.session_state.user_input,
+                            "include_flag": include_flag,
+                            "title_duration": title_duration,
+                            "frame_duration": frame_duration,
+                            "two_parts": two_parts,
+                            "voice_over": voice_over,
+                            "custom_thumbnail": custom_thumbnail,
+                            "bg_videos": bg_videos,
+                            "bg_music": bg_music
+                        })
+                        if two_parts == "Yes":
+                            yt_desc_path1 = r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\generated_videos'+ f"\\{'_'.join(st.session_state.user_input.split())}_part1.csv"
+                            yt_desc_path2 = r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\generated_videos'+ f"\\{'_'.join(st.session_state.user_input.split())}_part2.csv"
+                            full_title = st.session_state.title
+                            title_hahtags = re.findall(r'#\w+', full_title)
+                            title_part1 = full_title + ' Part 1 '#full_title[:full_title.index(title_hahtags[0])] + 'Part 1 ' + full_title[full_title.index(title_hahtags[0]):]
+                            title_part2 = full_title + ' Part 2 '#full_title[:full_title.index(title_hahtags[0])] + 'Part 2 ' + full_title[full_title.index(title_hahtags[0]):]
+                            full_desc = st.session_state.description
+                            desc_hashtags = re.findall(r'#\w+', full_desc)
+                            if len(desc_hashtags) >= 10:
+                                tenth_hashtag_index = full_desc.index(desc_hashtags[9]) + len(desc_hashtags[9])
+                            else:
+                                tenth_hashtag_index = len(full_desc)
+                            desc_part1 = full_desc[:tenth_hashtag_index].strip()
+                            desc_part2 = full_desc[:tenth_hashtag_index].strip()#[:full_desc.index(desc_hashtags[0])].strip() +"\n\n"+full_desc[tenth_hashtag_index:].strip()
+                            with open(yt_desc_path1, 'w', newline='') as csvfile:
+                                fieldnames = ['title', 'description']
+                                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+                                # Uncomment this line if you are creating the file for the first time
+                                writer.writeheader()
+                                
+                                writer.writerow({'title': title_part1, 'description': desc_part1})
+
+                            with open(yt_desc_path2, 'w', newline='') as csvfile:
+                                fieldnames = ['title', 'description']
+                                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+                                # Uncomment this line if you are creating the file for the first time
+                                writer.writeheader()
+                                
+                                writer.writerow({'title': title_part2, 'description': desc_part2})
+                        else:
+                            yt_desc_path = r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\generated_videos'+ f"\\{'_'.join(st.session_state.user_input.split())}_part1.csv"
+                            with open(yt_desc_path, 'w', newline='') as csvfile:
+                                fieldnames = ['title', 'description']
+                                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+                                # Uncomment this line if you are creating the file for the first time
+                                writer.writeheader()
+                                
+                                writer.writerow({'title': st.session_state.title, 'description': st.session_state.description})
+
                     except Exception as e:
                         st.error(
-                            f'Error occurred while creating video clips: {e}')
-                    audio_info = pick_default_audio_path()
-                    default_audio_file_path = audio_info[0]
-                    title_duration = audio_info[1]
-                    frame_duration = audio_info[2]
-                    with open(default_audio_file_path, 'rb') as default_audio_file:
-                        bg_music = default_audio_file.name
-
-                        # This line creates the video using the ranking list.
-                        try:
-                            # create_country_video(st.session_state.ranking_list,
-                            #                      user_input, include_flag, bg_videos=bg_videos, bg_music=bg_music)
-                            video_queue.put({
-                                "ranking_list": st.session_state.ranking_list,
-                                "user_input":  st.session_state.user_input,
-                                "include_flag": include_flag,
-                                "title_duration": title_duration,
-                                "frame_duration": frame_duration,
-                                "two_parts": two_parts,
-                                "voice_over": voice_over,
-                                "bg_videos": bg_videos,
-                                "bg_music": bg_music
-                            })
-                            if two_parts == "Yes":
-                                yt_desc_path1 = r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\generated_videos'+ f"\\{'_'.join(st.session_state.user_input.split())}_part1.csv"
-                                yt_desc_path2 = r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\generated_videos'+ f"\\{'_'.join(st.session_state.user_input.split())}_part2.csv"
-                                full_title = st.session_state.title
-                                title_hahtags = re.findall(r'#\w+', full_title)
-                                title_part1 = full_title + ' Part 1 '#full_title[:full_title.index(title_hahtags[0])] + 'Part 1 ' + full_title[full_title.index(title_hahtags[0]):]
-                                title_part2 = full_title + ' Part 2 '#full_title[:full_title.index(title_hahtags[0])] + 'Part 2 ' + full_title[full_title.index(title_hahtags[0]):]
-                                full_desc = st.session_state.description
-                                desc_hashtags = re.findall(r'#\w+', full_desc)
-                                if len(desc_hashtags) >= 10:
-                                    tenth_hashtag_index = full_desc.index(desc_hashtags[9]) + len(desc_hashtags[9])
-                                else:
-                                    tenth_hashtag_index = len(full_desc)
-                                desc_part1 = full_desc[:tenth_hashtag_index].strip()
-                                desc_part2 = full_desc[:tenth_hashtag_index].strip()#[:full_desc.index(desc_hashtags[0])].strip() +"\n\n"+full_desc[tenth_hashtag_index:].strip()
-                                with open(yt_desc_path1, 'w', newline='') as csvfile:
-                                    fieldnames = ['title', 'description']
-                                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-
-                                    # Uncomment this line if you are creating the file for the first time
-                                    writer.writeheader()
-                                    
-                                    writer.writerow({'title': title_part1, 'description': desc_part1})
- 
-                                with open(yt_desc_path2, 'w', newline='') as csvfile:
-                                    fieldnames = ['title', 'description']
-                                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-
-                                    # Uncomment this line if you are creating the file for the first time
-                                    writer.writeheader()
-                                    
-                                    writer.writerow({'title': title_part2, 'description': desc_part2})
-                            else:
-                                yt_desc_path = r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\generated_videos'+ f"\\{'_'.join(st.session_state.user_input.split())}_part1.csv"
-                                with open(yt_desc_path, 'w', newline='') as csvfile:
-                                    fieldnames = ['title', 'description']
-                                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-
-                                    # Uncomment this line if you are creating the file for the first time
-                                    writer.writeheader()
-                                    
-                                    writer.writerow({'title': st.session_state.title, 'description': st.session_state.description})
-
-                        except Exception as e:
-                            st.error(
-                                f'Error occurred while generating video: {e}')
+                            f'Error occurred while generating video: {e}')
         else:
+            print(
+                'Error: No JSON object to make a video out of. Click "Make OpenAICall" before this button.\
+                    \nOr by pass it in advanced settings') 
             st.error(
                 'Error: No JSON object to make a video out of. Click "Make OpenAICall" before this button.\
                     \nOr by pass it in advanced settings')  

@@ -14,10 +14,9 @@ import numpy as np
 
 
 
+fadein_time = 0.5  # duration of the fade-in in seconds
 
-
-
-def create_title_card_variant0(title_element, title_topic, duration=3.90, bg_video=None, title_media_file_paths=None, title_flag_paths = None, voice_over = 'No'):
+def create_title_card_variant0(title_element, title_topic, duration=3.90, thread_id=None, bg_video=None, title_media_file_paths=None, title_flag_paths = None, voice_over = 'No', custom_thumbnail = 'No'):
     canvas_clip = TextClip(f" ", fontsize=90, font="Calibri-Bold",
                            color='White', size=(1080, 1920), stroke_color='black', stroke_width=4, transparent=True)
     canvas_clip = canvas_clip.set_duration(duration)
@@ -45,7 +44,9 @@ def create_title_card_variant0(title_element, title_topic, duration=3.90, bg_vid
     shadow_clip = shadow_clip.set_position(lambda t: (5+amplitude_topic_hor * np.sin(2 * np.pi * frequency_topic_hor * t), (-295 + amplitude_topic_ver * np.sin(2 * np.pi * frequency_topic_ver * t)))).set_duration(duration) #Offset of 2 for Drop Shadow
     topic_clip = topic_clip.set_position(lambda t: (amplitude_topic_hor * np.sin(2 * np.pi * frequency_topic_hor * t), (-300 + amplitude_topic_ver * np.sin(2 * np.pi * frequency_topic_ver * t)))).set_duration(duration)
     #topic_clip = topic_clip.resize(lambda t : 1+(amplitude * np.sin(2 * np.pi * frequency * t))*t)  # Size increases as time goes on
-    
+    shadow_clip = shadow_clip.crossfadein(fadein_time)
+    topic_clip = topic_clip.crossfadein(fadein_time)
+
 
      # Create a list to hold all the ImageClips
     flag_clips = []
@@ -69,7 +70,8 @@ def create_title_card_variant0(title_element, title_topic, duration=3.90, bg_vid
         # Create a single clip that contains all the flag clips in sequence
         flags_clip = concatenate_videoclips(flag_clips, method="compose")
         flags_clip = flags_clip.set_position(lambda t: (515 - 860/2 + amplitude_topic_hor * np.sin(2 * np.pi * frequency_topic_hor * t), (450 + amplitude_topic_ver * np.sin(2 * np.pi * frequency_topic_ver * t)))).set_duration(duration)
-    
+        flags_clip = flags_clip.crossfadein(fadein_time)
+
     # Set margins
     #topic_clip = topic_clip.margin(left=100, right=100, bottom=0, top=0)
     #element_clip = element_clip.margin(left=100, right=100, bottom=0, top=0)
@@ -81,9 +83,13 @@ def create_title_card_variant0(title_element, title_topic, duration=3.90, bg_vid
             bg_video = bg_video.crop(width=1080)
         bg_video = bg_video.set_duration(duration)
 
-
+    amplitude_media_hor = -50#-W/15  # maximum distance to the left or right of center
+    frequency_media_hor = 0.4  # number of full oscillations per second
+    amplitude_media_ver = -20#-H/80  # maximum distance to the up or down of center
+    frequency_media_ver = 0.3  # number of full oscillations per second
     # title_media_file_path = None
-    if title_media_file_paths is not None:
+
+    if len(title_media_file_paths) == 1:
         media_clip = ImageClip(title_media_file_paths).set_duration(duration)
         # Resize the media clip as needed
         media_clip = media_clip.resize(height=580, width=1000)
@@ -94,50 +100,62 @@ def create_title_card_variant0(title_element, title_topic, duration=3.90, bg_vid
             print(
                 f"Failed to resize the media file: {title_media_file_paths}")
         else:
-            amplitude_media_hor = -50#-W/15  # maximum distance to the left or right of center
-            frequency_media_hor = 0.4  # number of full oscillations per second
-            amplitude_media_ver = -20#-H/80  # maximum distance to the up or down of center
-            frequency_media_ver = 0.3  # number of full oscillations per second
             if media_clip.w is not None:
-                media_clip = media_clip.set_position(lambda t: ((540 - media_clip.w/2)  + amplitude_media_hor * np.sin(2 * np.pi * frequency_media_hor * t), (1000 + amplitude_media_ver * np.sin(2 * np.pi * frequency_media_ver * t)))).set_duration(duration)  
-        
-        if bg_video is not None:
-            if flags_clip is not None:
-                title_card = CompositeVideoClip(
-                    [canvas_clip, bg_video, media_clip, element_clip,flags_clip, shadow_clip, topic_clip])
-            else:
-                title_card = CompositeVideoClip(
-                    [canvas_clip, bg_video, media_clip, element_clip,shadow_clip, topic_clip])
-        else:
-            title_card = CompositeVideoClip(
-                [canvas_clip, media_clip, element_clip, shadow_clip, topic_clip])
+                media_clip = media_clip.set_position(lambda t: ((280 - media_clip.w/2)  + amplitude_media_hor * np.sin(2 * np.pi * frequency_media_hor * t), (1400 - media_clip.size[1]/2 + amplitude_media_ver * np.sin(2 * np.pi * frequency_media_ver * t)))).set_duration(duration)  
+                media_clip = media_clip.crossfadein(fadein_time)
     else:
-        if bg_video is not None:
-            if flags_clip is not None:
-                title_card = CompositeVideoClip(
-                    [canvas_clip, bg_video, element_clip, flags_clip, shadow_clip, topic_clip])
-            else:
-                title_card = CompositeVideoClip(
-                    [canvas_clip, bg_video, element_clip, shadow_clip, topic_clip])
+        media_clips = []
+        each_shuffle_duration = duration/30.0
+        time_left = duration
+        while time_left > 0:
+            for title_media_path in title_media_file_paths:
+                # Create an ImageClip for each media
+                media_clip = ImageClip(title_media_path)
+                # Resize and position the media clip as needed
+                media_clip = media_clip.resize(height=580, width=1000)
+                media_clip = media_clip.margin(left=10, right=10, bottom=10, top=10)
+                media_clip = media_clip.set_position('center', 'center').set_duration(each_shuffle_duration)
+                time_left -= each_shuffle_duration #subtracting each flags duration until we have neough for the whole clip
+                # Add the flag clip to the list of media clips
+                media_clips.append(media_clip)
+
+        # Create a single clip that contains all the medias clips in sequence
+        final_media_clip = concatenate_videoclips(media_clips, method="compose")
+        final_media_clip = final_media_clip.set_position(lambda t: ((540 - media_clip.w/2)  + amplitude_media_hor * np.sin(2 * np.pi * frequency_media_hor * t), (1000 + amplitude_media_ver * np.sin(2 * np.pi * frequency_media_ver * t)))).set_duration(duration)  
+        final_media_clip = final_media_clip.crossfadein(fadein_time)
+
+    if bg_video is not None:
+        if flags_clip is not None:
+            title_card = CompositeVideoClip(
+                [canvas_clip, bg_video, final_media_clip, element_clip, flags_clip, shadow_clip, topic_clip])
         else:
             title_card = CompositeVideoClip(
-                [canvas_clip, element_clip, shadow_clip, topic_clip])
+                [canvas_clip, bg_video, final_media_clip, element_clip,shadow_clip, topic_clip])
+    else:
+        if flags_clip is not None:
+            title_card = CompositeVideoClip(
+                [canvas_clip, final_media_clip, element_clip, shadow_clip, topic_clip])
+        else:
+            title_card = CompositeVideoClip(
+                [canvas_clip, final_media_clip, element_clip,shadow_clip, topic_clip])
             
     # Text-To-Speech
     if voice_over == "Yes":
-        audio_file_path = f'C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\title_topic_{title_topic}.mp3'
-        azure_speak_text(f'Can you guess Top 10 {title_topic}?', duration, audio_file_path)
-        if os.path.exists(audio_file_path):
-            #print("Debug: File path exists:", audio_file_path)
-            final_audio = AudioFileClip(audio_file_path).volumex(1.0)
-            title_card = title_card.set_audio(final_audio)
-        else:
-            print("Debug: File path does not exist:", audio_file_path)
-        os.remove(audio_file_path)
+        audio_file_path = f'C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\title_topic_{title_topic}_{thread_id}.mp3'
+        text_str = f'Can you guess Top 10 {title_topic}?'
+        if duration / len(text_str) > 0.45: #Checking if there is enough time
+             text_str = f'Can you guess Top 10 {title_topic} Then lets begin'
+        azure_speak_text(text_str, duration, audio_file_path)
+    if os.path.exists(audio_file_path):
+        final_audio = AudioFileClip(audio_file_path).volumex(1.0)
+        title_card = title_card.set_audio(final_audio)
+    else:
+        print("Debug: File path does not exist:", audio_file_path)
+    #os.remove(audio_file_path)
     return title_card
 
 
-def create_counrty_ranking_frame(rank, country, why, what,topic, duration=2.80, bg_video=None, media_file_paths=None, voice_over = 'No'):
+def create_counrty_ranking_frame(rank, country, why, what,topic, thread_id=None, duration=2.80, bg_video=None, media_file_paths=None, voice_over = 'No'):
     canvas_clip = TextClip(f" ", fontsize=130, font="Calibri-Bold",
                            color='White', size=(1080, 1920), stroke_color='black', stroke_width=9, transparent=True)
     topic_clip = TextClip(wrap_text(f"{topic}", 24), fontsize=60, font="Calibri-Bold",
@@ -168,6 +186,8 @@ def create_counrty_ranking_frame(rank, country, why, what,topic, duration=2.80, 
     # adding W/2 (the center) moves the oscillation to the center of the screen
     txt_clip = txt_clip.set_position(lambda t: (amplitude_flag_hor * np.sin(2 * np.pi * frequency_flag_hor * t), (-560 + amplitude_flag_ver * np.sin(2 * np.pi * frequency_flag_ver * t)))).set_duration(duration)
     shadow_clip = shadow_clip.set_position(lambda t: (5 + amplitude_flag_hor * np.sin(2 * np.pi * frequency_flag_hor * t), (-555 + amplitude_flag_ver * np.sin(2 * np.pi * frequency_flag_ver * t)))).set_duration(duration)
+    txt_clip = txt_clip.crossfadein(fadein_time)
+    shadow_clip = shadow_clip.crossfadein(fadein_time)
 
 
 
@@ -219,7 +239,7 @@ def create_counrty_ranking_frame(rank, country, why, what,topic, duration=2.80, 
                     if len(media_clips) == 0:
                         # This is the first image
                         if media_clip.h is not None:
-                            media_clip = media_clip.set_position(lambda t: ((540 - media_clip.size[0] / 2)  + amplitude_media_hor * np.sin(2 * np.pi * frequency_media_hor * t), (850 + amplitude_media_ver * np.sin(2 * np.pi * frequency_media_ver * t)))).set_duration(duration)
+                            media_clip = media_clip.set_position(lambda t: ((540 - media_clip.size[0] / 2)  + amplitude_media_hor * np.sin(2 * np.pi * frequency_media_hor * t), (1050 - media_clip.size[1]/2 + amplitude_media_ver * np.sin(2 * np.pi * frequency_media_ver * t)))).set_duration(duration)
                             #media_clip = media_clip.set_position(("center", 850))
                         else:
                             media_clip = media_clip.set_position(lambda t: ((540 - media_clip.size[0] / 2)  + amplitude_media_hor * np.sin(2 * np.pi * frequency_media_hor * t), (amplitude_media_ver * np.sin(2 * np.pi * frequency_media_ver * t)))).set_duration(duration)
@@ -231,6 +251,7 @@ def create_counrty_ranking_frame(rank, country, why, what,topic, duration=2.80, 
                         media_clip = media_clip.set_position(lambda t: ((540 - media_clip.size[0] / 2)  + amplitude_flag_hor * np.sin(2 * np.pi * frequency_flag_hor * t), (640 - media_clip.h + amplitude_flag_ver * np.sin(2 * np.pi * frequency_flag_ver * t)))).set_duration(duration)
 
 
+                media_clip = media_clip.crossfadein(fadein_time)
                 media_clips.append(media_clip)
 
             except AVError:
@@ -253,25 +274,24 @@ def create_counrty_ranking_frame(rank, country, why, what,topic, duration=2.80, 
             
     # Text-To-Speech
     if voice_over == "Yes":
-        audio_file_path = f'C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\rank_country_{topic}_{rank}.mp3'
-        azure_speak_text(f"#{rank} {country}", duration, audio_file_path)
+        audio_file_path = f'C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\rank_country_{topic}_{rank}_{thread_id}.mp3'
+        text_str = f"#{rank} {country}"
+        if rank == 1:
+            text_str = f"and #{rank} {country}"
+        azure_speak_text(text_str, duration, audio_file_path)
         if os.path.exists(audio_file_path):
             #print("Debug: File path exists:", audio_file_path)
             final_audio = AudioFileClip(audio_file_path).volumex(1.0)
             clip = clip.set_audio(final_audio)
         else:
             print("Debug: File path does not exist:", audio_file_path)
-        os.remove(audio_file_path)
+        #os.remove(audio_file_path)
     return clip
 
 def create_country_video(ranking_list, topic, include_flag, thread_id, title_duration, frame_duration, include_bg_videos=True, elements='Countries', 
-                         bg_videos=None, bg_music=None, two_parts="No", voice_over="No"):
-    clips = []
-    title_media_file_path = f"C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\temp\\media_title.jpg"
-    new_title_media_file_path = f"C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\temp\\media_title_{thread_id}.jpg"
-    shutil.copy2(title_media_file_path, new_title_media_file_path)
+                         bg_videos=None, bg_music=None, two_parts="No", voice_over="No", custom_thumbnail = "No"):
+    clips = []    
     title_flag_paths = []
-
     # Rename all media files upfront
     for j in range(len(ranking_list)):
         try:
@@ -295,7 +315,15 @@ def create_country_video(ranking_list, topic, include_flag, thread_id, title_dur
         except Exception as e:
             print(f"Error occurred while renaming the media files: {e}")
             raise e
-        
+    title_media_file_path = f"C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\temp\\media_title.jpg"
+    if custom_thumbnail == 'Yes':
+        new_title_media_file_paths = f"C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\temp\\media_title_{thread_id}.jpg"
+        shutil.copy2(title_media_file_path, new_title_media_file_paths)
+    else:
+        new_title_media_file_paths = []
+        for j in range(len(ranking_list)):
+            new_title_media_file_paths.append(f"C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\temp\\media_{thread_id}_{j}_0.jpg")
+
     if two_parts == "Yes":
         ranking_lists = [ranking_list[:5], ranking_list[5:10]]  # Split the list into two parts
     else:
@@ -318,7 +346,7 @@ def create_country_video(ranking_list, topic, include_flag, thread_id, title_dur
 
         try:
             title_card = create_title_card_variant0(
-                title_element, title_topic, duration=title_duration, bg_video=bg_video, title_media_file_paths=new_title_media_file_path, title_flag_paths=title_flag_paths, voice_over = voice_over)
+                title_element, title_topic, duration=title_duration, thread_id=thread_id,bg_video=bg_video, title_media_file_paths=new_title_media_file_paths, title_flag_paths=title_flag_paths, voice_over = voice_over, custom_thumbnail = custom_thumbnail)
             if title_card is not None:
                 clips.append(title_card)
         except Exception as e:
@@ -355,7 +383,7 @@ def create_country_video(ranking_list, topic, include_flag, thread_id, title_dur
                     rank_offset = (part-2) * 5
                 ranking_frame = create_counrty_ranking_frame(
                     i - rank_offset, ranking_list[media_file_counter][0][0], ranking_list[media_file_counter][1][0], ranking_list[media_file_counter][2][0],
-                    topic = topic,duration=frame_duration ,bg_video=bg_video, media_file_paths=media_file_paths, voice_over = voice_over)
+                    topic = topic,duration=frame_duration ,thread_id=thread_id, bg_video=bg_video, media_file_paths=media_file_paths, voice_over = voice_over)
 
                 if ranking_frame is not None:
                     ranking_frame = ranking_frame.set_fps(24)  # set fps to 24
@@ -386,10 +414,9 @@ def create_country_video(ranking_list, topic, include_flag, thread_id, title_dur
 
             final_video.write_videofile(
                 f"{output_dir}{'_'.join(topic.split())}_part{part}.mp4", fps=24, codec='libx264')
-
         except Exception as e:
             print(f"Error occurred while processing the final video or writing it to a file: {e}")
             raise e
-    delete_media_files(min(10, len(ranking_list)), 2 if include_flag == 'Yes' else 1, thread_id)
+    #delete_media_files(min(10, len(ranking_list)), 2 if include_flag == 'Yes' else 1, thread_id)
     return None
     

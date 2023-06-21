@@ -17,6 +17,8 @@ import streamlit as st
 import ast
 import textwrap
 import math
+import glob
+
 
 
 def fadein_clip(clip, duration):
@@ -68,31 +70,7 @@ def get_item_hashtags_list(ranking_list):
     return hashtags_formatted_string
 
 
-def download_image(url, file_path):
-    try:
-        response = requests.get(url, timeout=5)  # set timeout to 5 seconds
-        if response.status_code == 200:
-            content_type = response.headers.get("Content-Type")
-            # Check if content type is an image and its size more than 1KB
-            if content_type and "image" in content_type and len(response.content) > 1024:
-                with open(file_path, "wb") as file:
-                    file.write(response.content)
 
-                # Open the image file
-                with Image.open(file_path) as img:
-                    # If the image mode is not 'RGB', convert it
-                    if img.mode != 'RGB':
-                        img = img.convert('RGB')
-                        img.save(file_path)
-
-                return True
-            else:
-                return False
-        else:
-            return False
-    except (requests.exceptions.RequestException, requests.exceptions.Timeout) as e:
-        print(f"Error downloading image: {e}")
-        return False
 
 
 def is_image_readable(file_path: str) -> bool:
@@ -217,17 +195,22 @@ def remove_non_printable_chars(s):
 
 
 
+import json
+import re
+
 def convert_openai_response(response):
     try:
-        # Print the raw response for debugging
-        # print(f"Raw response: {response}")
-        response = remove_non_printable_chars(
-            response)  # Remove non-printable characters
+        response = remove_non_printable_chars(response)  # Remove non-printable characters
 
         if isinstance(response, str):
             response = response.strip()
-            # Replace single quotes with double for json loader
-            response = response.replace("'", '"')
+
+            # A function to replace outermost single quotes in a string with double quotes
+            def replacer(match):
+                inner_str = match.group(1)  # this is the inner content of the matched string (without the outer quotes)
+                return '"' + inner_str + '"'  # we return the inner content surrounded by double quotes
+
+            response = re.sub(r"'([^']*)'", replacer, response)  # apply the replacer function on the regex matched substrings
 
         print(f"Response: {response}")  # Print the response for debugging
 
@@ -247,6 +230,22 @@ def convert_openai_response(response):
         print(f"Error: {e}")
         return response, "Empty response received."
 
+def download_image(url, file_path):
+    try:
+        response = requests.get(url, timeout=5)  
+        if response.status_code == 200:
+            content_type = response.headers.get("Content-Type")
+            if content_type and "image" in content_type and len(response.content) > 1024:
+                with open(file_path, "wb") as file:
+                    file.write(response.content)
+                return True
+            else:
+                return False
+        else:
+            return False
+    except (requests.exceptions.RequestException, requests.exceptions.Timeout) as e:
+        print(f"Error downloading image: {e}")
+        return False
 
 def generate_columns_layout(media_file_paths, queries):
     # Determine the total number of rows
@@ -406,7 +405,15 @@ def pick_default_audio_path():
     audio_list = [blast, passion, mazaphonk, string6th, perfect, isolation]
     return random.choice(audio_list)
 
-if __name__ == '__main__':
-    #speak_text("Countries with Least Allies")
-    azure_speak_text("Countries With Toughest Cats", 'test_speech.mp4')
+if __name__ == '__main__':  #lets go, then let's begin, 3 2 1,
+    #speak_text("Countries with Least Allies")  
+    # azure_speak_text(f'Can you guess Top 10 Countries with Deadliest Snakes? lets go ', 5, 'letsgo.mp4')
+    # azure_speak_text(f'Can you guess Top 10 Countries with Deadliest Snakes? 3, 2, 1 ', 5, '123.mp4')
+    # azure_speak_text(f'Can you guess Top 10 Countries with Deadliest Snakes? huh ', 5, 'huh.mp4')
+    azure_speak_text(f'"boo-tss" and "kaa-tss"', 5, 'cats.mp4')
+
+
+    
+
+
 

@@ -31,6 +31,7 @@ def worker(thread_id):
             frame_duration = video_data["frame_duration"],
             two_parts = video_data["two_parts"],
             voice_over = video_data["voice_over"],
+            custom_thumbnail = video_data["custom_thumbnail"],
             bg_videos = video_data["bg_videos"],
             bg_music = video_data["bg_music"],
             thread_id = thread_id
