@@ -60,6 +60,30 @@ def authenticate_youtube(channel_choice):
 
     return build('youtube', 'v3', credentials=creds)
 
+import requests
+
+def list_uploaded_shorts(channel_choice):
+    url = f"https://yt.lemnoslife.com/channels?part=shorts&id={channel_choice}"
+    response = requests.get(url)
+    data = response.json()
+    
+    # Check if 'items' key exists in the data
+    if 'items' in data and len(data['items']) > 0:
+        # Check if 'shorts' key exists in the first item
+        if 'shorts' in data['items'][0]:
+            shorts_titles = [short["title"] for short in data["items"][0]["shorts"]]
+            return shorts_titles
+        else:
+            print("No 'shorts' key in the data. The channel might not have any shorts.")
+            return []
+    else:
+        print("'items' key not found in the data. The channel ID might be incorrect or the API might have changed.")
+        return []
+
+
+
+
+
 def get_channel_category(channel_choice):
     if channel_choice == '🟡top10countryrankings':
         return ' '

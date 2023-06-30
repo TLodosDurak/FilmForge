@@ -6,6 +6,8 @@ from scripts.video import create_country_video
 from moviepy.config import change_settings
 from scripts.main_page import page1
 from scripts.upload_page import page2
+from scripts.idea_generator_page import page3
+
 import queue
 import threading
 import uuid
@@ -47,7 +49,6 @@ for i in range(num_worker_threads):
 
 
 def main():
-
     load_dotenv()  # Loading env vars
     os.environ['CLIENT_SECRET_FILE0'] = 'C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\client_secret_0.json'
     os.environ['CLIENT_SECRET_FILE1'] = 'C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\client_secret_1.json'
@@ -59,12 +60,22 @@ def main():
     pages = {
         "Video Creation": page1,
         "Schedule and Uploads": page2,
+        "Idea Generator": page3,
     }
 
     page = st.sidebar.selectbox("Select your page:", tuple(pages.keys()))
 
-    # Run the appropriate function to draw the selected page.
-    pages[page](video_queue)
+    # Check the selected page
+    if page == "Video Creation":
+        video_title = st.session_state.video_title if 'video_title' in st.session_state else None
+        # Run the page1 function with video_queue as argument
+        pages[page](video_queue, video_title)
+    else:
+        # Run the other functions without any argument
+        pages[page]()
 
 if __name__ == "__main__":
     main()
+
+
+

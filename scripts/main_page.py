@@ -3,7 +3,7 @@ import streamlit as st
 import os
 from langchain.llms import OpenAI
 from langchain.chains import LLMChain
-from scripts.utils import convert_openai_response, save_uploaded_file, pick_default_audio_path, get_hashtags_list, switch_response, reverse_response, generate_columns_layout
+from scripts.utils import convert_openai_response, save_uploaded_file, pick_default_audio_path, get_hashtags_list, switch_response, reverse_response, generate_columns_layout, add_adjective
 from scripts.video import download_image, is_image_readable
 from scripts.templates import *
 from scripts.youtube import *
@@ -15,7 +15,7 @@ import glob
 
 
 
-def page1(video_queue):
+def page1(video_queue, video_title):
     # Asking for user input
     if 'user_input' not in st.session_state:
         st.session_state.user_input = 'Countries in Fashion 2023'
@@ -54,11 +54,12 @@ def page1(video_queue):
 
     google_search = CustomGoogleSearchAPIWrapper()
 
-    #with st.expander('Advanced OpenAI Settings'):
-    # OpenAI Call Bypass Radio Button
-    openai_bypass = st.radio('Bypass OpenAI Call?', ('No', 'Yes'))
-    reverse_button = st.button("Reverse Response")
-    switch_button = st.button("Switch Response")
+    with st.expander("Advanced Ranking List Options"):
+        #Buttons for JSON manipulation
+        reverse_button = st.button("Reverse Response")
+        switch_button = st.button("Switch Response")
+        adjective=st.text_input("Enter adjective to be added at the end of media query")
+        adjective_button = st.button("Add Adjective")
 
     if reverse_button:
         reversed_response = reverse_response(st.session_state.ranking_list)
@@ -67,6 +68,10 @@ def page1(video_queue):
     if switch_button:
         switched_response = switch_response(st.session_state.ranking_list)
         st.session_state.ranking_list = switched_response
+    
+    if adjective_button:
+        new_list = add_adjective(st.session_state.ranking_list, adjective)
+        st.session_state.ranking_list = new_list
 
     user_entered_response = st.text_area(
         "Enter your own response", st.session_state.ranking_list)
@@ -76,6 +81,60 @@ def page1(video_queue):
             st.error(error)
 
     submit_button = st.button("Submit Response")
+    import shutil
+    with st.expander("Advanced Image Options"):
+        title_media_query = st.text_input('Input Search Query')
+        basename = st.text_input('Input Base Path to be Replaced(e.g. media_0_0))')
+
+        # The user's input is now in title_media_query
+        title_media_query = [title_media_query]
+
+        # Perform Google search
+        try:
+            title_media_results = google_search.search_media(
+                title_media_query, num_results=3)
+        except Exception as e:
+            st.write(f"Error occurred while using Google Search API: {e}")
+            raise e
+
+        # Download and check image from top 3 results
+        title_media_file_path = f"C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\temp\\media_title.jpg"
+        new_media_file_path = f"C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\temp\\{basename}.jpg"
+        image_downloaded = False
+        for media in title_media_results[:3]:
+            media_url = media["link"]
+            try:
+                if not image_downloaded:
+                    image_downloaded = download_image(
+                        media_url, title_media_file_path)
+                    # Check if the image is readable
+                    if image_downloaded and is_image_readable(title_media_file_path):
+                        break
+            except Exception as e:
+                st.write(
+                    f"Error occurred while downloading or reading the image: {e}")
+                raise e
+
+        # Display image to the user
+        if image_downloaded:
+            image = Image.open(title_media_file_path)
+            st.image(image, caption=title_media_query)
+        else:
+            if os.path.isfile(title_media_file_path):
+                image = Image.open(title_media_file_path)
+                st.image(image, caption=title_media_query)
+            else:
+                st.write("No valid image found.")
+        if st.button("Copy image"):
+            try:
+                shutil.copy2(title_media_file_path, new_media_file_path)
+                st.write(f"Image copied to {new_media_file_path}")
+            except Exception as e:
+                st.error(f"Error occurred while copying image: {e}")
+
+
+
+
     if submit_button:
         if "media_file_paths" not in st.session_state:
             st.session_state.media_file_paths = []  # Initialize media_file_paths as an empty list if not already initialized
@@ -91,7 +150,7 @@ def page1(video_queue):
                 media_queries = [
                     f"{st.session_state.ranking_list[j][3][0]}"]
                 media_queries.append(
-                    f"{st.session_state.ranking_list[j][0][0]} flag bitmap")
+                    f"{st.session_state.ranking_list[j][0][0]} flag")
                 for media_query in media_queries:
                     st.session_state.queries.append(media_query)
                     media_results = google_search.search_media(
@@ -128,14 +187,14 @@ def page1(video_queue):
     if openai_button:
         if  st.session_state.user_input.strip() == '':
             st.error('Error: Input field is empty. Please enter a topic.')
-        elif openai_bypass == 'No':
+        else:
             with st.spinner("Waiting for OpenAI response..."):
                 try:
                     response = video_chain4.run({"topic":  st.session_state.user_input})
-                    fact_checked_response = fact_check_chain.run(
-                        {"topic":  st.session_state.user_input, "response": response})
-                    st.session_state.ranking_list, error = convert_openai_response(
-                        fact_checked_response)
+                    # fact_checked_response = fact_check_chain.run(
+                    #     {"topic":  st.session_state.user_input, "response": response})
+                    st.session_state.ranking_list, error = convert_openai_response(response)
+                    st.session_state.ranking_list = reverse_response(st.session_state.ranking_list)
                     if error is not None:
                         st.error(error)
                     # print(get_hashtags_list(st.session_state.ranking_list))
@@ -149,73 +208,16 @@ def page1(video_queue):
                 except Exception as e:
                     print(f'Error occurred while calling OpenAI API: {e}')
                 with st.expander("Click to expand OpenAI response:"):
-                    st.write("Fact Checked Response:", fact_checked_response)
+                    st.write("Response:", response)
                     st.write("Formatted Response:",
-                             st.session_state.ranking_list)
+                                st.session_state.ranking_list)
                 st.session_state.generate_video = True
-        elif openai_bypass == 'Yes':
-            st.error('Error: Bypass OpenAI is set to Yes')
-            st.session_state.generate_video = True
-            if user_entered_response.strip() == '':
-                st.error(
-                    'Error: Response field is empty. Please enter your own response.')
-            else:
-                try:
-                    st.session_state.ranking_list, error = convert_openai_response(
-                        user_entered_response)
-                    if error is not None:
-                        st.error(error)
-                    st.session_state.generate_video = True
-                except Exception as e:
-                    st.error(
-                        f'Error occurred while parsing user entered response: {e}')
         st.experimental_rerun()
     with st.expander("Advanced Generate Video Settings"):
         include_flag = st.radio('Include Country flag?', ('No', 'Yes'))
         two_parts = st.radio('Make it two parts?', ('No', 'Yes'))
         voice_over = st.radio('Have a voice over?', ('No', 'Yes'))
-        custom_thumbnail = st.radio('Have a single custom thumbnail?', ('No', 'Yes'))
-
-        title_media_query = st.text_input('Input Thumbnail Search Query')
-
-        # The user's input is now in title_media_query
-        title_media_query = [title_media_query]
-
-        # Perform Google search
-        try:
-            title_media_results = google_search.search_media(
-                title_media_query, num_results=3)
-        except Exception as e:
-            st.write(f"Error occurred while using Google Search API: {e}")
-            raise e
-
-        # Download and check image from top 3 results
-        title_media_file_path = f"C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\temp\\media_title.jpg"
-        image_downloaded = False
-        for media in title_media_results[:3]:
-            media_url = media["link"]
-            try:
-                if not image_downloaded:
-                    image_downloaded = download_image(
-                        media_url, title_media_file_path)
-                    # Check if the image is readable
-                    if image_downloaded and is_image_readable(title_media_file_path):
-                        break
-            except Exception as e:
-                st.write(
-                    f"Error occurred while downloading or reading the image: {e}")
-                raise e
-
-        # Display image to the user
-        if image_downloaded:
-            image = Image.open(title_media_file_path)
-            st.image(image, caption=title_media_query)
-        else:
-            if os.path.isfile(title_media_file_path):
-                image = Image.open(title_media_file_path)
-                st.image(image, caption=title_media_query)
-            else:
-                st.write("No valid image found.")
+        custom_thumbnail = 'No'
     
     tags = []
     if  st.session_state.user_input.strip() == '':
@@ -252,7 +254,7 @@ def page1(video_queue):
         print('Generating Video', st.session_state.user_input)
         if  st.session_state.user_input.strip() == '':
             st.error('Error: Input field is empty. Please enter a topic.')
-        elif (st.session_state.get('generate_video') and  st.session_state.user_input) or openai_bypass == 'Yes':
+        else: #(st.session_state.get('generate_video') and  st.session_state.user_input):
             st.write(f'Generating Video {st.session_state.user_input}...')
             st.write(f'This will take around 3 minutes, you can check its progress in Schedule Tab.')
             st.write(f'Feel free to keep generating new videos!')
@@ -333,13 +335,13 @@ def page1(video_queue):
                     except Exception as e:
                         st.error(
                             f'Error occurred while generating video: {e}')
-        else:
-            print(
-                'Error: No JSON object to make a video out of. Click "Make OpenAICall" before this button.\
-                    \nOr by pass it in advanced settings') 
-            st.error(
-                'Error: No JSON object to make a video out of. Click "Make OpenAICall" before this button.\
-                    \nOr by pass it in advanced settings')  
+        # else:
+        #     print(
+        #         'Error: No JSON object to make a video out of. Click "Make OpenAICall" before this button.\
+        #             \nOr by pass it in advanced settings') 
+        #     st.error(
+        #         'Error: No JSON object to make a video out of. Click "Make OpenAICall" before this button.\
+        #             \nOr input your own')  
         for row in cols:
             for column in row:
                 column.write("")  # Add empty write statements to preserve the layout

@@ -142,6 +142,13 @@ hashtag_template = PromptTemplate(
         Answer: Let's think step by step '''
 )
 
+idea_template = PromptTemplate(
+    input_variables=['list'],
+    template='''Given the youtube short title below:
+                {list} make 15 new suggestions
+                Answer: Let's think step by step '''
+)
+
 
 video_template_comparison = PromptTemplate(
     input_variables=['country1', 'country2'],

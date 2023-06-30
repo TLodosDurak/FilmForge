@@ -8,7 +8,7 @@ import shutil
 video_dir = 'C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\generated_videos'
 history_dir = 'C:\\Users\\lodos\\Desktop\\FilmForge Python\\FilmForge\\history'
 
-def page2(video_queue):
+def page2():
     video_files_per_row = 3
     video_files = [f for f in os.listdir(video_dir) if f.endswith('.mp4')]
 
@@ -26,8 +26,24 @@ def page2(video_queue):
                     video_path = os.path.join(video_dir, video_file)
                     cols[j].video(video_path, format='mp4')
                     
-                    # Generate the corresponding CSV file path
-                    csv_file_path = os.path.splitext(video_path)[0] + '.csv'
+                    # Generate the corresponding CSV file path to be manipulated
+                    csv_file_name = os.path.splitext(video_path)[0]
+                    # We first split by the backslash to isolate the file name
+                    path_parts = csv_file_name.split('\\')
+
+                    # Then, we split the file name by the underscore to isolate the unique identifier
+                    file_name_parts = path_parts[-1].split('_')
+
+                    # We want to remove the last part of the file name (the unique identifier)
+                    new_file_name = '_'.join(file_name_parts[:-1])
+
+                    # We replace the old file name with the new one in the path parts
+                    path_parts[-1] = new_file_name
+
+                    # Finally, we join the path parts back together
+                    csv_file_path = '\\'.join(path_parts) +'.csv'
+
+
                     with st.expander('Expand Meta Data'):
                         # Read the CSV file and extract the title and description
                         try:

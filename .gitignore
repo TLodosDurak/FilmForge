@@ -8,7 +8,8 @@ temp/*
 default_pexel*
 generated_videos/*
 history/*
-
+maps/*
+temp_audio/*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

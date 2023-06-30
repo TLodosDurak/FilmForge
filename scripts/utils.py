@@ -232,12 +232,21 @@ def convert_openai_response(response):
 
 def download_image(url, file_path):
     try:
-        response = requests.get(url, timeout=5)  
+        response = requests.get(url, timeout=5)  # set timeout to 5 seconds
         if response.status_code == 200:
             content_type = response.headers.get("Content-Type")
+            # Check if content type is an image and its size more than 1KB
             if content_type and "image" in content_type and len(response.content) > 1024:
                 with open(file_path, "wb") as file:
                     file.write(response.content)
+
+                # Open the image file
+                with Image.open(file_path) as img:
+                    # If the image mode is not 'RGB', convert it
+                    if img.mode != 'RGB':
+                        img = img.convert('RGB')
+                        img.save(file_path)
+
                 return True
             else:
                 return False
@@ -263,13 +272,16 @@ def generate_columns_layout(media_file_paths, queries):
         if os.path.exists(media_file_path):  # If the file exists
             image = Image.open(media_file_path)
             cols[current_row][current_col].image(image, width=100)  # set width to resize the image
-        cols[current_row][current_col].write(query)  # write the query under the image or alone
+        basename_no_ext = os.path.basename(os.path.splitext(media_file_path)[0])
+        # Write the query and the shortened path under the image or alone
+        cols[current_row][current_col].write(f"{query.upper()}\n{basename_no_ext}")
         current_col += 1  # move to the next column
         if current_col >= 4:  # if we have filled all columns in the current row
             current_row += 1  # move to the next row
             current_col = 0  # reset to the first column in the new row
 
     return cols
+
 
 
 def reverse_response(response_str):
@@ -309,6 +321,24 @@ def switch_response(response_str):
         return list_response  # Return the original string in case of an error
     return list_response
 
+def add_adjective(response_str, adjective):
+    try:
+        # If the response is already a list, there's no need to convert it
+        if isinstance(response_str, list):
+            list_response = response_str
+        else:
+            # Convert the string back to a list
+            list_response = ast.literal_eval(response_str)
+        for i in range(len(list_response)):
+            # Check if the inner list has at least 4 elements
+            if len(list_response[i]) >= 4:
+                list_response[i][3] = [f'{list_response[i][3][0]} {adjective}']
+    except Exception as e:
+        print(f"Error while adding adjective: {str(e)}")
+        return list_response  # Return the original string in case of an error
+    return list_response
+
+
 from gtts import gTTS
 
 def speak_text(text):
@@ -319,35 +349,6 @@ def speak_text(text):
 
 import azure.cognitiveservices.speech as speechsdk
 azure_api_key = os.environ['AZURE_API_KEY']
-# def azure_speak_text(text, duration, output_filename):
-#     # Replace with your own subscription key and region identifier from Azure.
-#     speech_key, service_region = azure_api_key, "eastus"
-#     speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=service_region)
-
-#     # Set the speech synthesis output format.
-#     speech_config.set_speech_synthesis_output_format(speechsdk.SpeechSynthesisOutputFormat.Riff24Khz16BitMonoPcm)
-
-#     # Choose the neural voice. You can change to other neural voices available.
-#     speech_config.speech_synthesis_voice_name = "en-US-GuyNeural"
-
-#     # Create a speech synthesizer using the configured voice for your language.
-#     speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config)
-
-#     # Synthesize the text.
-#     result = speech_synthesizer.speak_text_async(text).get()
-
-#     # Check the result.
-#     if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
-#         print("Speech synthesized for text [", text, "]")
-#         # Save the synthesized speech to a .mp3 file
-#         with open(output_filename, "wb") as audio_file:
-#             audio_file.write(result.audio_data)
-#     elif result.reason == speechsdk.ResultReason.Canceled:
-#         cancellation_details = result.cancellation_details
-#         print("Speech synthesis canceled: {}".format(cancellation_details.reason))
-#         if cancellation_details.reason == speechsdk.CancellationReason.Error:
-#             print("Error details: {}".format(cancellation_details.error_details))
-
 
 def azure_speak_text(text, duration, output_filename):
     # Replace with your own subscription key and region identifier from Azure.
@@ -395,16 +396,17 @@ def azure_speak_text(text, duration, output_filename):
 
 def pick_default_audio_path():
     # audio file paths
-    blast = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\01_blast.mp3', 4.85, 1.95]
-    passion = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\02_passion.mp3', 7.3, 2.5]
-    mazaphonk = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\03_mazaphonk.mp3', 4.75, 2.0]
+    blast = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\01_blast.mp3', 3.5, 1.95]
+    passion = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\02_passion.mp3', 3.5, 2.5]
+    mazaphonk = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\03_mazaphonk.mp3', 3.5, 2.0]
     #phonkhouse = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\04_phonkhouse.mp3', 0, 0]
-    string6th = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\05_6thstring.mp3', 3.9, 2.8]
-    perfect = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\06_perfect.mp3', 5.0, 2.33]
-    isolation = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\07_isolate.mp3', 5.35, 2.3]
+    string6th = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\05_6thstring.mp3', 3.5, 2.8]
+    perfect = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\06_perfect.mp3', 3.5, 2.33]
+    isolation = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\07_isolate.mp3', 3.3, 2.3]
+    take_off = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\take off everything (kendrick x radiohead).mp3', 3.5, 2.0]
     audio_list = [blast, passion, mazaphonk, string6th, perfect, isolation]
-    return random.choice(audio_list)
-
+    #return random.choice(audio_list)
+    return take_off
 if __name__ == '__main__':  #lets go, then let's begin, 3 2 1,
     #speak_text("Countries with Least Allies")  
     # azure_speak_text(f'Can you guess Top 10 Countries with Deadliest Snakes? lets go ', 5, 'letsgo.mp4')
