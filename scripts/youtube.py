@@ -109,16 +109,27 @@ def get_next_available_slot(last_upload_time):
     # if the current time is ahead of the last_upload_time, use the current time
     reference_time = now if now > last_upload_time else last_upload_time
 
-    next_8_am = datetime.combine(reference_time.date(), time(8))  # next 8 am
-    next_7_pm = datetime.combine(reference_time.date(), time(19))  # next 7 pm
+    # Define all the upload times
+    next_2_am = datetime.combine(reference_time.date(), time(2))  # next 2 am = 8am views
+    next_6_am = datetime.combine(reference_time.date(), time(6))  # next 6 am = 12pm views
+    next_7_am = datetime.combine(reference_time.date(), time(10))  # next 10 am = 4pm views
+    next_1_pm = datetime.combine(reference_time.date(), time(14))  # next 2 pm = 8pm views
+    next_5_pm = datetime.combine(reference_time.date(), time(18))  # next 6 pm = 12am views
 
-    if reference_time < next_8_am:
-        return next_8_am
-    elif reference_time < next_7_pm:
-        return next_7_pm
+    # Find the next slot based on the reference time
+    if reference_time < next_2_am:
+        return next_2_am
+    elif reference_time < next_6_am:
+        return next_6_am
+    elif reference_time < next_7_am:
+        return next_7_am
+    elif reference_time < next_1_pm:
+        return next_1_pm
+    elif reference_time < next_5_pm:
+        return next_5_pm
     else:
-        # If it's already past 9 PM, schedule for 1 PM the next day
-        return next_8_am + timedelta(days=1)
+        # If it's already past 5 PM, schedule for 2 AM the next day
+        return next_2_am + timedelta(days=1)
 
 
 

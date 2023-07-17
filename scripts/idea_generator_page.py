@@ -6,7 +6,7 @@ from langchain.chains import LLMChain
 from scripts.templates import idea_template
 
 def page3():
-    llm = OpenAI(model_name='text-davinci-003', temperature=1)
+    llm = OpenAI(model_name='text-davinci-003', temperature=1) #gpt-4
 
     idea_chain = LLMChain(llm=llm, prompt=idea_template, verbose=True)
 

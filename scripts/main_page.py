@@ -3,7 +3,7 @@ import streamlit as st
 import os
 from langchain.llms import OpenAI
 from langchain.chains import LLMChain
-from scripts.utils import convert_openai_response, save_uploaded_file, pick_default_audio_path, get_hashtags_list, switch_response, reverse_response, generate_columns_layout, add_adjective
+from scripts.utils import convert_openai_response, save_uploaded_file, pick_default_audio_path, get_hashtags_list, switch_response, reverse_response, generate_columns_layout, add_adjective, combine_list, add_statistics
 from scripts.video import download_image, is_image_readable
 from scripts.templates import *
 from scripts.youtube import *
@@ -12,6 +12,8 @@ from PIL import Image
 from scripts.custom_google_search import CustomGoogleSearchAPIWrapper
 import re
 import glob
+import csv
+from pathlib import Path
 
 
 
@@ -28,8 +30,8 @@ def page1(video_queue, video_title):
 
     # For testing the code without making openai calls $$$
     if 'ranking_list' not in st.session_state:
-        st.session_state.ranking_list = [[["India"], ["Fashion Hub"], ["Mumbai"], ["indian fashion"]], [["China"], ["Fashion Hub"], ["Shanghai"], ["chinese fashion"]],  [["Australia"], ["Fashion Destination"], ["Sydney"], ["australian fashion"]], [["Germany"], ["Fashion Pioneer"], ["Berlin"], ["german fashion"]], [["Spain"], ["Fashion Icon"], ["Madrid"], ["spanish fashion"]],   [
-            ["United States"], ["Fashion Influencer"], ["New York"], ["american fashion"]], [["Japan"], ["Fashion Innovator"], ["Tokyo"], ["japanese fashion"]], [["United Kingdom"], ["Fashion Trendsetter"], ["London"], ["british fashion"]], [["Italy"], ["Fashion Leader"], ["Milan"], ["italian fashion"]],  [["France"], ["Fashion Capital"], ["Paris"], ["french fashion"]]]
+        st.session_state.ranking_list = [[["India"], ["Mumbai"], ["indian fashion"]], [["China"], ["Shanghai"], ["chinese fashion"]],  [["Australia"], ["Sydney"], ["australian fashion"]], [["Germany"], ["Berlin"], ["german fashion"]], [["Spain"], ["Madrid"], ["spanish fashion"]],   [
+            ["United States"], ["New York"], ["american fashion"]], [["Japan"], ["Tokyo"], ["japanese fashion"]], [["United Kingdom"], ["London"], ["british fashion"]], [["Italy"], ["Milan"], ["italian fashion"]],  [["France"], ["Paris"], ["french fashion"]]]
     if 'title' not in st.session_state:
         st.session_state.title =  st.session_state.user_input
     if 'description' not in st.session_state:
@@ -37,10 +39,11 @@ def page1(video_queue, video_title):
             '#italy #france #uk #usa #nyc #london #milan #paris #india #mumbai #shangai #sydney #berlin #japan #tokyo #spain #madrid'
 
     # Creating chains
-    llm = OpenAI(model_name='text-davinci-003', temperature=0.2)
+    llm = OpenAI(model_name='gpt-4', temperature=0.2) #text-davinci-003
     llm2 = OpenAI(model_name='text-davinci-002', temperature=0.2)
 
     video_chain4 = LLMChain(llm=llm, prompt=video_template4, verbose=True)
+    video_chain20 = LLMChain(llm=llm, prompt=video_template20, verbose=True)
     fact_check_chain = LLMChain(
         llm=llm, prompt=fact_check_template, verbose=True)
     hashtage_chain = LLMChain(llm=llm2, prompt=hashtag_template, verbose=True)
@@ -57,9 +60,11 @@ def page1(video_queue, video_title):
     with st.expander("Advanced Ranking List Options"):
         #Buttons for JSON manipulation
         reverse_button = st.button("Reverse Response")
-        switch_button = st.button("Switch Response")
+        switch_button = st.button("Replace Response")
         adjective=st.text_input("Enter adjective to be added at the end of media query")
         adjective_button = st.button("Add Adjective")
+        statistics_button = st.button("Add Statistics")
+
 
     if reverse_button:
         reversed_response = reverse_response(st.session_state.ranking_list)
@@ -71,6 +76,10 @@ def page1(video_queue, video_title):
     
     if adjective_button:
         new_list = add_adjective(st.session_state.ranking_list, adjective)
+        st.session_state.ranking_list = new_list
+
+    if statistics_button:
+        new_list = add_statistics(st.session_state.user_input, st.session_state.ranking_list)
         st.session_state.ranking_list = new_list
 
     user_entered_response = st.text_area(
@@ -144,11 +153,21 @@ def page1(video_queue, video_title):
         if error is not None:
             st.error(error)
         print('Ranking_List:', st.session_state.ranking_list)
+        # Add the ranking list to a CSV file
+        ranking_list_history_path = Path(r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\ranking_list_history\ranking_list_history.csv')
+        with ranking_list_history_path.open('a', newline='') as csvfile:
+            fieldnames = ['ranking_list']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+            # Uncomment the following line if you are creating the file for the first time or if you want headers in every append
+            # writer.writeheader()
+
+            writer.writerow({'ranking_list': str(st.session_state.ranking_list)})
         j = 0
         for i in range(min(10, len(st.session_state.ranking_list)), 0, -1):
             try:
                 media_queries = [
-                    f"{st.session_state.ranking_list[j][3][0]}"]
+                    f"{st.session_state.ranking_list[j][2][0]}"]
                 media_queries.append(
                     f"{st.session_state.ranking_list[j][0][0]} flag")
                 for media_query in media_queries:
@@ -191,10 +210,15 @@ def page1(video_queue, video_title):
             with st.spinner("Waiting for OpenAI response..."):
                 try:
                     response = video_chain4.run({"topic":  st.session_state.user_input})
-                    # fact_checked_response = fact_check_chain.run(
-                    #     {"topic":  st.session_state.user_input, "response": response})
-                    st.session_state.ranking_list, error = convert_openai_response(response)
+                    # response20 = video_chain20.run(
+                    #     {"topic":  st.session_state.user_input, "list": response})
+                    response, error = convert_openai_response(response)
+                    # response20, error = convert_openai_response(response20)
+                    # combined_response = combine_list(response, response20)
+                    # combined_response, error = convert_openai_response(combined_response)
+                    st.session_state.ranking_list= response
                     st.session_state.ranking_list = reverse_response(st.session_state.ranking_list)
+                    st.session_state.ranking_list, error = convert_openai_response(st.session_state.ranking_list)
                     if error is not None:
                         st.error(error)
                     # print(get_hashtags_list(st.session_state.ranking_list))
@@ -203,16 +227,11 @@ def page1(video_queue, video_title):
                     # print(hashtag_response)
                     hashtag_response = get_hashtags_list(st.session_state.ranking_list)
                     st.session_state.description = 'Top 10: ' +  st.session_state.user_input + \
-                        '\n\n#shorts #countries #countryfacts ' + hashtag_response
-
+                        '\n\n#shorts #countries #countryfacts #countryballs #countryball ' + hashtag_response
+                    st.experimental_rerun()
                 except Exception as e:
                     print(f'Error occurred while calling OpenAI API: {e}')
-                with st.expander("Click to expand OpenAI response:"):
-                    st.write("Response:", response)
-                    st.write("Formatted Response:",
-                                st.session_state.ranking_list)
                 st.session_state.generate_video = True
-        st.experimental_rerun()
     with st.expander("Advanced Generate Video Settings"):
         include_flag = st.radio('Include Country flag?', ('No', 'Yes'))
         two_parts = st.radio('Make it two parts?', ('No', 'Yes'))
@@ -240,7 +259,7 @@ def page1(video_queue, video_title):
         #                 {"list": get_hashtags_list(st.session_state.ranking_list)})
         hashtag_response = get_hashtags_list(st.session_state.ranking_list)
         st.session_state.description = 'Top 10: ' +  st.session_state.user_input + \
-                        '\n\n#shorts #countries #countryfacts ' + hashtag_response
+                        '\n\n#shorts #countries #countryfacts #countryballs #countryball ' + hashtag_response
         st.experimental_rerun()
         
         

@@ -24,6 +24,27 @@ import glob
 def fadein_clip(clip, duration):
     return clip.fx(fadein, duration)
 
+def shake(t, shake_period, shake_duration, intensity):
+    # t: current time
+    # shake_period: how often the shake happens
+    # shake_duration: how long each shake lasts
+    # intensity: how aggressive the shake is (measured in pixels)
+
+    # Only shake during the shake_period and shake_duration
+    if t % shake_period < shake_duration:
+        # Calculate a decay factor for the shake intensity
+        time_factor = 1 - (t % shake_period) / shake_duration  # Linear decay from 1 to 0
+
+        # Apply the decay factor to the intensity
+        current_intensity = intensity * time_factor
+
+        # Return a random position offset to "shake" the clip
+        return (current_intensity * np.random.uniform(-1, 1), current_intensity * np.random.uniform(-1, 1))
+    else:
+        # No shaking
+        return (0, 0)
+
+
 
 def get_hashtags_list(ranking_list):
     # Initialize an empty list to store the hashtags
@@ -313,9 +334,9 @@ def switch_response(response_str):
             # Convert the string back to a list
             list_response = ast.literal_eval(response_str)
         for i in range(len(list_response)):
-            # Check if the inner list has at least 4 elements
-            if len(list_response[i]) >= 4:
-                list_response[i][3] = [f'{list_response[i][0][0]} {list_response[i][2][0]}']
+            # Check if the inner list has at least 3 elements
+            if len(list_response[i]) >= 3:
+                list_response[i][2] = [f'{list_response[i][0][0]} {list_response[i][1][0]}']
     except Exception as e:
         print(f"Error while switching: {str(e)}")
         return list_response  # Return the original string in case of an error
@@ -330,13 +351,87 @@ def add_adjective(response_str, adjective):
             # Convert the string back to a list
             list_response = ast.literal_eval(response_str)
         for i in range(len(list_response)):
-            # Check if the inner list has at least 4 elements
-            if len(list_response[i]) >= 4:
-                list_response[i][3] = [f'{list_response[i][3][0]} {adjective}']
+            # Check if the inner list has at least 3 elements
+            if len(list_response[i]) >= 3:
+                list_response[i][2] = [f'{list_response[i][2][0]} {adjective}']
     except Exception as e:
         print(f"Error while adding adjective: {str(e)}")
         return list_response  # Return the original string in case of an error
     return list_response
+
+from fuzzywuzzy import process
+def find_nearest_country(country, country_list):
+    if country in country_list:
+        # If there is an exact match, return it directly
+        return country
+    elif country == 'United States':
+        return 'United States of America'
+    elif country == 'USA':
+        return 'United States of America'
+    elif country =='England':
+        return 'United Kingdom'
+    elif country =='UK':
+        return 'United Kingdom'
+    else:
+        # Otherwise, use fuzzy matching
+        nearest_country = process.extractOne(country, country_list)
+        return nearest_country[0]
+
+from langchain.llms import OpenAI
+from langchain.chains import LLMChain
+from scripts.templates import statistic_template10
+def add_statistics(topic, ranking_list):
+    try:
+        # If the response is already a list, there's no need to convert it
+        if isinstance(ranking_list, list):
+            list_response = ranking_list
+        else:
+            # Convert the string back to a list
+            list_response = ast.literal_eval(ranking_list)
+        llm = OpenAI(model_name='gpt-4', temperature=0.2) #text-davinci-003
+        statistics_chain10 = LLMChain(llm=llm, prompt=statistic_template10, verbose=True)
+        stats = statistics_chain10.run({"topic":  topic, "list": list_response})
+        stats, error = convert_openai_response(stats)
+        if isinstance(stats, list):
+            stats = [str(item) for item in stats]  # Ensure all items in list are strings
+        else:
+            stats = ast.literal_eval(stats)
+        stats = [stat.strip() for stat in stats]
+        for i in range(len(list_response)):
+            # Check if the inner list has at least 3 elements
+            if len(list_response[i]) >= 3:
+                new_rank = []
+                for element in list_response[i]:
+                    new_rank.append(element)
+                new_rank.append([stats[i]])
+                list_response[i] = new_rank
+    except Exception as e:
+        print(f"Error while adding statistics: {str(e)}")
+        return ranking_list  # Return the original string in case of an error
+    return list_response
+
+def combine_list(list1, list2):
+    try:
+        if isinstance(list1, list):
+            list1 = list1
+        else:
+            # Convert the string back to a list
+            list1 = ast.literal_eval(list1)
+        if isinstance(list2, list):
+            list2 = list2
+        else:
+            # Convert the string back to a list
+            list2 = ast.literal_eval(list2)    
+        combined_list = []
+        for rank in list1:
+            combined_list.append(rank)
+        for rank in list2:
+            combined_list.append(rank)
+    except Exception as e:
+        print(f"Error while adding adjective: {str(e)}")
+        return 'N/A'  # Return the original string in case of an error
+    return combined_list
+    
 
 
 from gtts import gTTS
@@ -404,9 +499,11 @@ def pick_default_audio_path():
     perfect = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\06_perfect.mp3', 3.5, 2.33]
     isolation = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\07_isolate.mp3', 3.3, 2.3]
     take_off = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\take off everything (kendrick x radiohead).mp3', 3.5, 2.0]
+    little_dark = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\lildarkage.mp3', 2.5, 1.8]
+    dead_inside = [r'C:\Users\lodos\Desktop\FilmForge Python\FilmForge\src\audio\08_Dead_Inside_slowed.mp3', 5.20, 2.35]
     audio_list = [blast, passion, mazaphonk, string6th, perfect, isolation]
     #return random.choice(audio_list)
-    return take_off
+    return dead_inside
 if __name__ == '__main__':  #lets go, then let's begin, 3 2 1,
     #speak_text("Countries with Least Allies")  
     # azure_speak_text(f'Can you guess Top 10 Countries with Deadliest Snakes? lets go ', 5, 'letsgo.mp4')

@@ -7,7 +7,7 @@ from moviepy.config import change_settings
 from scripts.main_page import page1
 from scripts.upload_page import page2
 from scripts.idea_generator_page import page3
-
+from multiprocessing import Lock
 import queue
 import threading
 import uuid
@@ -20,12 +20,13 @@ google_search = CustomGoogleSearchAPIWrapper()
 video_queue = queue.Queue()
 
 
-def worker(thread_id):
+def worker(lock, thread_id):
     while True:
         video_data = video_queue.get()
         if video_data is None:
             break
         create_country_video(
+            lock,
             ranking_list = video_data["ranking_list"],
             topic = video_data["user_input"],
             include_flag = video_data["include_flag"],
@@ -40,10 +41,12 @@ def worker(thread_id):
         )
         video_queue.task_done()
 
+
 threads = []
 num_worker_threads = 4
+lock = Lock()
 for i in range(num_worker_threads):
-    t = threading.Thread(target=worker, args=(str(uuid.uuid4()),))
+    t = threading.Thread(target=worker, args=(lock, str(uuid.uuid4()),))
     t.start()
     threads.append(t)
 

@@ -10,25 +10,78 @@ from langchain.prompts import PromptTemplate
 # Make sure response is in the correct order! 10th place first and 1st place last!'
 video_template4 = PromptTemplate(
     input_variables=['topic'],
-    template='''Determine the top 10 countries specifically related to given input, starting from the 10th best to the 1st. 
-                Your response should be a valid JSON 3D array format, starting from the 10th place and ascending to the 1st. 
-                The format should be as follows: [["Country"], ["Reason"], ["Fact"], ["Google Image Search Query"]], 
-                with each country represented in a similar manner. The "Reason" should be concise, no more than three words, 
-                explaining why the country is ranked at that position. The "Fact" is a brief fact or name related to the "Reason", 
-                also limited to three words. The "Google Image Search Query" should be a suitable search term for images related to 
-                the country and the topic, avoiding numbers unless it is a year, and should also be no more than three words Ensure 
-                the response is in the correct order, with the 10th place first and the 1st place last.
-                Question: Castles
-                
-                Answer:[[["Sweden"], ["Beautiful Architecture"], ["Visby Medieval Walls"], ["Sweden Castles"]], [["Scotland"], ["Historical Heritage"], ["Edinburgh Castle"], ["Scotland Castles"]], [["Germany"], ["Fairy Tale Castles"], ["Neuschwanstein Castle"], ["Germany Castles"]], [["Wales"], ["Impressive Fortresses"], ["Conwy Castle"], ["Wales Castles"]], [["France"], ["Château Country"], ["Château de Chambord"], ["France Castles"]], [["Spain"], ["Moorish Castles"], ["Alhambra Palace"], ["Spain Castles"]], [["England"], ["Tower of London"], ["Tower of London"], ["England Castles"]], [["Ireland"], ["Medieval Strongholds"], ["Blarney Castle"], ["Ireland Castles"]], [["Czech Republic"], ["Bohemian Castles"], ["Prague Castle"], ["Czech Republic Castles"]], [["Japan"], ["Japanese Castles"], ["Himeji Castle"], ["Japan Castles"]]]
-                
-                Question: Military Ranking
-                
-                Answer:[[["Turkey"], ["Regional Power]", ["Strategic Location]", "[Turkey Military"]], [["South Korea"], ["Technological Advancement"], ["K2 Black Panther"], ["South Korea Military"]], [["Germany"], ["Modern Armed Forces]", ["Bundeswehr"], ["Germany Military"], [["Israel"], ["Advanced Defense Systems"], ["Iron Dome"], ["Israel Military"]], [["Japan"], ["Self-Defense Forces"], ["JSDF"], ["Japan Military"]], [["India"], ["Large Military"], ["Indian Army"], ["India Military"]], [["Russia"], ["Nuclear Capabilities"], ["Russian Military"], ["Russia Military"]], [["China"], ["Growing Military Power"], ["PLA"], ["China Military"]], [["United Kingdom"], ["Global Power Projection"], ["Royal Navy"], ["UK Military"]], [["United States"], ["Superpower Status"], ["Pentagon"], ["US Military"]]]
-                
-                Question: {topic}
-                
-                Answer: Let's think step by step '''
+    template='''
+    For a given input, determine the top 10 countries specifically related to given topic, starting from the best to the 10th.
+    Your response should be in valid JSON format, a 3D array, with each element representing a country in descending order of relevance to the input.
+    Each element of the array should have the following format: [["Country"], ["Fact"], ["Google Image Search Query"]],
+    where "Country" is the name of the country, "Fact" represents a brief fact or name related to the country and the given input (limited to three words),
+    and "Google Image Search Query" is a suitable search term for images related to the country and the topic (also no more than three words).
+    Avoid numbers in the "Google Image Search Query" unless it is a year.
+    Remember to always include a country in your response even if it's not mentioned in the question.
+
+    Question: Castles
+
+    Answer:[[["Sweden"], ["Visby Medieval Walls"], ["Sweden Castles"]], [["Scotland"], ["Edinburgh Castle"], ["Scotland Castles"]], [["Germany"], ["Neuschwanstein Castle"], ["Germany Castles"]], [["Wales"], ["Conwy Castle"], ["Wales Castles"]], [["France"], ["Château de Chambord"], ["France Castles"]], [["Spain"], ["Alhambra Palace"], ["Spain Castles"]], [["England"], ["Tower of London"], ["England Castles"]], [["Ireland"], ["Blarney Castle"], ["Ireland Castles"]], [["Czech Republic"], ["Prague Castle"], ["Czech Republic Castles"]], [["Japan"], ["Himeji Castle"], ["Japan Castles"]]]
+
+    Question: Deadliest Insects
+
+    Answer:[[['Colombia'], ['Kissing Bug'], ['Colombia Insects']], [['Mexico'], ['Kissing Bug'], ['Mexico Insects']], [['Indonesia'], ['Giant Centipede'], ['Indonesia Insects']], [['United States'], ['Kissing Bug'], ['US Insects']], [['China'], ['Asian Giant Hornet'], ['China Insects']], [['South Africa'], ['Tsetse Fly'], ['South Africa Insects']], [['Vietnam'], ['Giant Water Bug'], ['Vietnam Insects']], [['India'], ['Malaria Mosquito'], ['India Insects']], [['Australia'], ['Funnel-Web Spider'], ['Australia Insects']], [['Brazil'], ['Kissing Bug'], ['Brazil Insects']]]
+
+    Question: {topic}
+
+    Answer: Let's think step by step...
+    '''
+)
+video_template20 = PromptTemplate(
+    input_variables=['topic', 'list'],
+    template='''
+    For a given topic and an initial list of top 10 countries, determine the subsequent 10 countries (ranked 11-20) specifically related to the given topic, starting from the 11th to the 20th.
+    Your response should be in valid JSON format, a 3D array, with each element representing a country in descending order of relevance to the input.
+    Each element of the array should have the following format: [["Country"], ["Fact"], ["Google Image Search Query"]],
+    where "Country" is the name of the country, "Fact" represents a brief fact or name related to the country and the given input (limited to three words),
+    and "Google Image Search Query" is a suitable search term for images related to the country and the topic (also no more than three words).
+    Avoid numbers in the "Google Image Search Query" unless it is a year.
+    Remember to always include a country in your response even if it's not mentioned in the question or in the initial list.
+
+    Question: Deadliest Insects, [['Colombia'], ['Kissing Bug'], ['Colombia Insects']], [['Mexico'], ['Kissing Bug'], ['Mexico Insects']], [['Indonesia'], ['Giant Centipede'], ['Indonesia Insects']], [['United States'], ['Kissing Bug'], ['US Insects']], [['China'], ['Asian Giant Hornet'], ['China Insects']], [['South Africa'], ['Tsetse Fly'], ['South Africa Insects']], [['Vietnam'], ['Giant Water Bug'], ['Vietnam Insects']], [['India'], ['Malaria Mosquito'], ['India Insects']], [['Australia'], ['Funnel-Web Spider'], ['Australia Insects']], [['Brazil'], ['Kissing Bug'], ['Brazil Insects']]
+    Answer: [[['Peru'], ['Kissing Bug'], ['Peru Insects']], [['Kenya'], ['Malaria Mosquito'], ['Kenya Insects']], [['Thailand'], ['Asian Giant Hornet'], ['Thailand Insects']], [['Japan'], ['Asian Giant Hornet'], ['Japan Insects']], [['Cameroon'], ['Tsetse Fly'], ['Cameroon Insects']], [['Nigeria'], ['Tsetse Fly'], ['Nigeria Insects']], [['Ethiopia'], ['Malaria Mosquito'], ['Ethiopia Insects']], [['Malaysia'], ['Giant Centipede'], ['Malaysia Insects']], [['Congo'], ['Tsetse Fly'], ['Congo Insects']], [['Colombia'], ['bullet ant'], ['Colombia Insects']]]
+
+    Question: {topic}, {list}
+    Answer:
+    ''')
+
+statistic_template20 = PromptTemplate(
+    input_variables=['topic', 'list'],
+    template='''
+    Given a ranked list of topics from 20th place to 1st place, I need you to generate plausible statistics related to each topic. The list of topics is as follows:
+
+    Generate statistics in a way that it makes sense within the given ranking, even if they are approximations. The information should be represented in the following format: ['Statistics for Rank 20', 'Statistics for Rank 19', ... 'Statistics for Rank 2', 'Statistics for Rank 1'] Remember to include only the statistic in your response, country names are irrelevant. Make your answer short and concise. Do not include Country names in your response!
+    Question:
+    Countries with Fastest Birds
+    [[['Bangladesh'], ['Pied Kingfisher'], ['Bangladesh Pied Kingfisher']], [['Colombia'], ['Andean Condor'], ['Colombia Andean Condor']], [['Egypt'], ['Egyptian Vulture'], ['Egypt Egyptian Vulture']], [['France'], ['Eurasian Hobby'], ['France Eurasian Hobby']], [['Japan'], ['Japanese Bush Warbler'], ['Japan Japanese Bush Warbler']], [['Russia'], ['Saker Falcon'], ['Russia Saker Falcon']], [['Saudi Arabia'], ['Sooty Falcon'], ['Saudi Arabia Sooty Falcon']], [['Spain'], ['Eurasian Hobby'], ['Spain Eurasian Hobby']], [['Uganda'], ['Grey-Crowned Crane'], ['Uganda Grey-Crowned Crane']], [['Zimbabwe'], ['Kori Bustard'], ['Zimbabwe Kori Bustard']], [['Brazil'], ['Hyacinth Macaw'], ['Brazil Hyacinth Macaw']], [['Canada'], ['Peregrine Falcon'], ['Canada Peregrine Falcon']], [['China'], ['White-Eared Pheasant'], ['China White-Eared Pheasant']], [['India'], ['Indian Peafowl'], ['India Indian Peafowl']], [['Mexico'], ['Roadrunner'], ['Mexico Roadrunner']], [['Australia'], ['Emu'], ['Australia Emu']], [['United States'], ['Peregrine Falcon'], ['United States Peregrine Falcon']], [['Namibia'], ['Kori Bustard'], ['Namibia Kori Bustard']], [['South Africa'], ['Secretary Bird'], ['South Africa Secretary Bird']], [['Kenya'], ['Somali Ostrich'], ['Kenya Somali Ostrich']]]
+    Answer: ['Top speed of 40 mph', 'Top speed of 45 mph', 'Top speed of 50 mph', 'Top speed of 55 mph', 'Top speed of 60 mph', 'Top speed of 65 mph', 'Top speed of 70 mph', 'Top speed of 65 mph', 'Top speed of 70 mph', 'Top speed of 75 mph', 'Top speed of 80 mph', 'Top speed of 85 mph', 'Top speed of 90 mph', 'Top speed of 95 mph', 'Top speed of 100 mph', 'Top speed of 95 mph', 'Top speed of 100 mph', 'Top speed of 105 mph', 'Top speed of 110 mph', 'Top speed of 115 mph', 'Top speed of 120 mph']
+    Question:
+    {topic}
+    {list}
+    Answer: Let's think step by step.
+    '''
+)
+
+statistic_template10 = PromptTemplate(
+    input_variables=['topic', 'list'],
+    template='''
+    Given a ranked list of topics from 10th place to 1st place, I need you to generate plausible statistics related to each topic. The list of topics is as follows:
+
+    Generate statistics in a way that it makes sense within the given ranking, even if they are approximations. The information should be represented in the following format: ['Statistics for Rank 10', 'Statistics for Rank 9', ... 'Statistics for Rank 2', 'Statistics for Rank 1'] Remember to include only the statistic in your response, country names are irrelevant. Make your answer short and concise. Do not include Country names in your response! Do not make user more than 3 words!
+    Question:
+    Countries with Fastest Birds
+    [[['Brazil'], ['Hyacinth Macaw'], ['Brazil Hyacinth Macaw']], [['Canada'], ['Peregrine Falcon'], ['Canada Peregrine Falcon']], [['China'], ['White-Eared Pheasant'], ['China White-Eared Pheasant']], [['India'], ['Indian Peafowl'], ['India Indian Peafowl']], [['Mexico'], ['Roadrunner'], ['Mexico Roadrunner']], [['Australia'], ['Emu'], ['Australia Emu']], [['United States'], ['Peregrine Falcon'], ['United States Peregrine Falcon']], [['Namibia'], ['Kori Bustard'], ['Namibia Kori Bustard']], [['South Africa'], ['Secretary Bird'], ['South Africa Secretary Bird']], [['Kenya'], ['Somali Ostrich'], ['Kenya Somali Ostrich']]]
+    Answer: ['Top speed of 85 mph', 'Top speed of 90 mph', 'Top speed of 95 mph', 'Top speed of 100 mph', 'Top speed of 95 mph', 'Top speed of 100 mph', 'Top speed of 105 mph', 'Top speed of 110 mph', 'Top speed of 115 mph', 'Top speed of 120 mph']
+    Question:
+    {topic}
+    {list}
+    Answer: Let's think step by step.
+    '''
 )
 
 
@@ -145,7 +198,7 @@ hashtag_template = PromptTemplate(
 idea_template = PromptTemplate(
     input_variables=['list'],
     template='''Given the youtube short title below:
-                {list} make 15 new suggestions
+                {list} make 15 new suggestions that are about countries and with viral potential. Topics like military, history, culture. Stuff nationalist people would like to see.
                 Answer: Let's think step by step '''
 )
 
